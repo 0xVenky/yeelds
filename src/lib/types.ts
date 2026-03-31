@@ -1,0 +1,110 @@
+// Token info (embedded in pool responses)
+export type TokenInfo = {
+  address: string;
+  symbol: string;
+  chain: string;
+  is_stable: boolean;
+};
+
+// Pool as returned by GET /api/v1/pools
+export type PoolListItem = {
+  id: string;
+  chain: string;
+  protocol: string;
+  protocol_url: string | null;
+  pool_type: string;
+  symbol: string;
+  tvl_usd: number;
+  yield: {
+    apr_total: number;
+    apr_base: number | null;
+    apr_reward: number | null;
+    apr_base_7d: number | null;
+    il_7d: number | null;
+  };
+  exposure: {
+    type: string;
+    category: string | null;
+    underlying_tokens: TokenInfo[];
+  };
+  risk: {
+    contract_age_days: number | null;
+    is_audited: boolean | null;
+    top_lp_concentration: number | null;
+    underlying_depeg_risk: string | null;
+  };
+  incentives_summary: {
+    count: number;
+    nearest_expiry_days: number | null;
+    total_daily_rewards_usd: number | null;
+    sources: string[];
+  };
+  simulation: {
+    daily_earnings_per_1k: number;
+    monthly_earnings_per_1k: number;
+    yearly_earnings_per_1k: number;
+  };
+};
+
+// Pool detail — GET /api/v1/pools/:id
+export type PoolDetail = PoolListItem & {
+  incentive_campaigns: CampaignDetail[];
+  risk_detail: RiskDetail;
+};
+
+export type CampaignDetail = {
+  source: string;
+  reward_token: { symbol: string; address: string };
+  apr_contribution: number;
+  daily_rewards_usd: number | null;
+  start_date: string;
+  end_date: string;
+  days_remaining: number;
+  status: string;
+  is_kpi_based: boolean;
+  kpi_details: object | null;
+};
+
+export type RiskDetail = {
+  contract_age_days: number | null;
+  contract_address: string | null;
+  is_verified: boolean | null;
+  is_audited: boolean | null;
+  audit_firms: string[] | null;
+  top_lp_concentration: number | null;
+  pool_age_days: number | null;
+  has_admin_key: boolean | null;
+  underlying_depeg_risk: string | null;
+  notes: string | null;
+};
+
+// Paginated response wrapper
+export type PaginatedResponse<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
+  last_refreshed: string | null;
+};
+
+// Filter options — GET /api/v1/filters
+export type FiltersResponse = {
+  chains: string[];
+  protocols: { slug: string; name: string; pool_count: number }[];
+  pool_types: string[];
+  exposure_categories: string[];
+  tokens: { symbol: string; pool_count: number }[];
+};
+
+// Stats — GET /api/v1/stats
+export type StatsResponse = {
+  total_pools: number;
+  total_tvl_usd: number;
+  chains_covered: number;
+  protocols_covered: number;
+  last_refreshed: string | null;
+  refresh_interval_minutes: number;
+};
