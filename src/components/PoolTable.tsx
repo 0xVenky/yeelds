@@ -12,6 +12,7 @@ const POOL_TYPE_STYLES: Record<string, string> = {
   amm_lp: "bg-blue-900/50 text-blue-300",
   lending: "bg-green-900/50 text-green-300",
   vault: "bg-purple-900/50 text-purple-300",
+  staking: "bg-amber-900/50 text-amber-300",
 };
 
 function chainLabel(chain: string): string {

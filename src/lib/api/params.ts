@@ -18,7 +18,7 @@ export type PoolQueryParams = {
   limit: number;
 };
 
-const VALID_POOL_TYPES = ["lending", "amm_lp", "vault"];
+const VALID_POOL_TYPES = ["lending", "amm_lp", "vault", "staking"];
 const VALID_EXPOSURE_CATEGORIES = ["stablecoin", "blue_chip", "volatile", "mixed"];
 
 function validateChain(val: string | null): string | undefined {

@@ -64,6 +64,7 @@ export function formatPoolType(type: string): string {
     amm_lp: "AMM LP",
     lending: "Lending",
     vault: "Vault",
+    staking: "Staking",
   };
   return map[type] ?? type;
 }

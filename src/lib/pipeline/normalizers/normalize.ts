@@ -3,14 +3,33 @@ import type { PoolListItem, TokenInfo } from "@/lib/types";
 import { DEFILLAMA_CHAIN_MAP } from "@/lib/constants";
 import { apyToApr, computeSimulation } from "@/lib/utils";
 
-const LENDING_PROTOCOLS = ["aave-v3", "compound-v3", "morpho", "spark", "silo-v2", "radiant-v2"];
-const VAULT_PROTOCOLS = ["yearn-finance", "beefy", "sommelier"];
+const STAKING_PROTOCOLS = [
+  "lido", "rocket-pool", "binance-staked-eth", "coinbase-wrapped-staked-eth",
+  "frax-ether", "ether.fi-stake", "ether.fi-liquid", "swell-liquid-staking",
+  "swell-liquid-restaking", "bifrost-liquid-staking", "stakewise-v2",
+  "liquid-collective", "prime-staked-eth", "arpa-staking", "stake.link-liquid",
+  "mantle-staked-eth", "stader",
+];
+
+const LENDING_PROTOCOLS = [
+  "aave-v3", "aave-v2", "compound-v3", "compound-v2", "spark",
+  "silo-v2", "radiant-v2", "fluid-lending", "maple", "euler",
+  "benqi-lending", "venus-core-pool", "moonwell",
+];
+
+const VAULT_PROTOCOLS = [
+  "yearn-finance", "beefy", "sommelier", "morpho-v1", "convex-finance",
+  "stake-dao", "concentrator", "bracket-vaults", "spectra-metavaults",
+];
 
 function inferPoolType(project: string, poolMeta: string | null): string {
+  if (STAKING_PROTOCOLS.includes(project)) return "staking";
   if (LENDING_PROTOCOLS.includes(project)) return "lending";
   if (VAULT_PROTOCOLS.includes(project)) return "vault";
-  if (poolMeta?.toLowerCase().includes("lend")) return "lending";
-  if (poolMeta?.toLowerCase().includes("vault")) return "vault";
+  const meta = poolMeta?.toLowerCase();
+  if (meta?.includes("lend")) return "lending";
+  if (meta?.includes("vault")) return "vault";
+  if (meta?.includes("stak")) return "staking";
   return "amm_lp";
 }
 
