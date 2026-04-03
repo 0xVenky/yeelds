@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 
 type NavItem = {
@@ -14,16 +14,21 @@ type NavItem = {
 
 const DISCOVER_ITEMS: NavItem[] = [
   {
-    label: "Yields",
+    label: "All Yields",
     param: {},
+  },
+  {
+    label: "Stablecoins",
+    href: "/stables",
     children: [
-      { label: "Lending", param: { pool_type: "lending" } },
-      { label: "LP into AMM", param: { pool_type: "amm_lp" } },
-      { label: "Vaults", param: { pool_type: "vault" } },
+      { label: "USD", href: "/stables/usd" },
+      { label: "EUR", href: "/stables/eur" },
     ],
   },
-  { label: "Protocols", disabled: true },
-  { label: "Chains", disabled: true },
+  { label: "ETH & LSTs", href: "/eth" },
+  { label: "Bitcoin", href: "/btc" },
+  { label: "RWA", href: "/rwa" },
+  { label: "Yield-Bearing", href: "/yield-bearing" },
 ];
 
 const RESEARCH_ITEMS: NavItem[] = [
@@ -49,29 +54,34 @@ function buildUrl(params: Record<string, string>): string {
 export function Sidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [yieldsExpanded, setYieldsExpanded] = useState(true);
+  const [stablesExpanded, setStablesExpanded] = useState(
+    pathname.startsWith("/stables"),
+  );
 
-  function isActive(param?: Record<string, string>): boolean {
-    if (!param) return false;
-    if (Object.keys(param).length === 0) {
-      // "Yields" root — active when no pool_type filter
-      return !searchParams.get("pool_type") && !searchParams.get("exposure_category");
+  function isActive(item: NavItem): boolean {
+    // href-based items: match pathname
+    if (item.href) return pathname === item.href;
+    // param-based items: match when on home page with matching params
+    if (item.param) {
+      if (pathname !== "/") return false;
+      if (Object.keys(item.param).length === 0) {
+        // "All Yields" — active on home with no asset filters
+        return !searchParams.get("pool_type") && !searchParams.get("exposure_category");
+      }
+      return Object.entries(item.param).every(([k, v]) => searchParams.get(k) === v);
     }
-    return Object.entries(param).every(([k, v]) => searchParams.get(k) === v);
+    return false;
   }
 
-  function navigate(param: Record<string, string>, replace = false) {
-    let qs: string;
-    if (replace || Object.keys(param).length === 0) {
-      qs = new URLSearchParams(param).toString();
-    } else {
-      const merged = new URLSearchParams(searchParams.toString());
-      Object.entries(param).forEach(([k, v]) => merged.set(k, v));
-      merged.delete("page");
-      qs = merged.toString();
+  function navigateTo(item: NavItem) {
+    if (item.href) {
+      router.push(item.href);
+    } else if (item.param) {
+      const qs = new URLSearchParams(item.param).toString();
+      router.push(qs ? `/?${qs}` : "/");
     }
-    router.push(qs ? `/?${qs}` : "/");
     setMobileOpen(false);
   }
 
@@ -94,23 +104,18 @@ export function Sidebar() {
                 <>
                   <button
                     onClick={() => {
-                      setYieldsExpanded(!yieldsExpanded);
-                      if (item.param) navigate(item.param, true);
+                      setStablesExpanded(!stablesExpanded);
+                      navigateTo(item);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive(item.param) && !searchParams.get("pool_type")
+                      isActive(item)
                         ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
                         : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
                     }`}
                   >
-                    <span className="flex items-center gap-2">
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z" />
-                      </svg>
-                      {item.label}
-                    </span>
+                    <span>{item.label}</span>
                     <svg
-                      className={`h-4 w-4 transition-transform ${yieldsExpanded ? "rotate-90" : ""}`}
+                      className={`h-4 w-4 transition-transform ${stablesExpanded ? "rotate-90" : ""}`}
                       viewBox="0 0 20 20"
                       fill="currentColor"
                       aria-hidden="true"
@@ -118,14 +123,14 @@ export function Sidebar() {
                       <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
                     </svg>
                   </button>
-                  {yieldsExpanded && (
+                  {stablesExpanded && (
                     <div className="ml-6 mt-1 space-y-0.5">
                       {item.children.map((child) => (
                         <button
                           key={child.label}
-                          onClick={() => child.param && navigate(child.param)}
+                          onClick={() => navigateTo(child)}
                           className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-                            isActive(child.param)
+                            isActive(child)
                               ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
                               : "text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
                           }`}
@@ -136,8 +141,19 @@ export function Sidebar() {
                     </div>
                   )}
                 </>
-              ) : (
+              ) : item.disabled ? (
                 <DisabledItem label={item.label} />
+              ) : (
+                <button
+                  onClick={() => navigateTo(item)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    isActive(item)
+                      ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
+                      : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {item.label}
+                </button>
               )}
             </div>
           ))}
@@ -162,9 +178,9 @@ export function Sidebar() {
           {PRESET_ITEMS.map((item) => (
             <button
               key={item.label}
-              onClick={() => item.param && navigate(item.param, true)}
+              onClick={() => navigateTo(item)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive(item.param)
+                isActive(item)
                   ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
                   : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
               }`}

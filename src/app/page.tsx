@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
+import { AssetClassTabs } from "@/components/AssetClassTabs";
 import { DiscoveryTabs } from "@/components/DiscoveryTabs";
 import { FilterBar } from "@/components/FilterBar";
 import { PoolTable } from "@/components/PoolTable";
@@ -34,6 +35,9 @@ export default async function HomePage({
   return (
     <div className="flex-1 flex flex-col">
       <Header stats={stats} />
+      <Suspense>
+        <AssetClassTabs />
+      </Suspense>
       <Suspense>
         <DiscoveryTabs />
       </Suspense>

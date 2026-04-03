@@ -16,7 +16,13 @@ export function filterPools(pools: PoolListItem[], params: PoolQueryParams): Poo
   if (params.pool_type) result = result.filter(p => p.pool_type === params.pool_type);
   if (params.protocol) result = result.filter(p => p.protocol === params.protocol);
   if (params.exposure_category) result = result.filter(p => p.exposure.category === params.exposure_category);
-  if (params.asset_class) result = result.filter(p => p.exposure.asset_class === params.asset_class);
+  if (params.asset_class) {
+    if (params.asset_class === "stablecoin") {
+      result = result.filter(p => p.exposure.asset_class === "usd_stable" || p.exposure.asset_class === "eur_stable");
+    } else {
+      result = result.filter(p => p.exposure.asset_class === params.asset_class);
+    }
+  }
   if (params.yield_source) result = result.filter(p => p.yield_source === params.yield_source);
   if (params.yield_bearing) result = result.filter(p => p.exposure.has_yield_bearing_token);
   if (params.min_tvl) result = result.filter(p => p.tvl_usd >= params.min_tvl!);

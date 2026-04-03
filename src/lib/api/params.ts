@@ -24,7 +24,7 @@ export type PoolQueryParams = {
 
 const VALID_POOL_TYPES = ["lending", "amm_lp", "vault", "staking"];
 const VALID_EXPOSURE_CATEGORIES = ["stablecoin", "blue_chip", "volatile", "mixed"];
-const VALID_ASSET_CLASSES = ["usd_stable", "eur_stable", "eth_class", "btc_class", "rwa", "mixed"];
+const VALID_ASSET_CLASSES = ["usd_stable", "eur_stable", "eth_class", "btc_class", "rwa", "mixed", "stablecoin"];
 
 function validateChain(val: string | null): string | undefined {
   if (val && (SUPPORTED_CHAINS as readonly string[]).includes(val)) return val;
