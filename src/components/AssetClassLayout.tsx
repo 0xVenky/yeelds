@@ -6,10 +6,7 @@ import { PoolTable } from "@/components/PoolTable";
 import { Pagination } from "@/components/Pagination";
 import { IncentivesToggle } from "@/components/IncentivesToggle";
 import { formatTvl } from "@/lib/utils";
-import type { PaginatedResponse, PoolListItem } from "@/lib/types";
-import { getBaseUrl } from "@/lib/utils";
-
-const BASE_URL = getBaseUrl();
+import { queryPools } from "@/lib/api/query";
 
 type AssetClassLayoutProps = {
   title: string;
@@ -24,25 +21,18 @@ export async function AssetClassLayout({
   filterParams,
   searchParams,
 }: AssetClassLayoutProps) {
-  const params = await searchParams;
+  const raw = await searchParams;
 
   // Merge user params with locked asset-class params (locked params win)
-  const merged: Record<string, string> = {};
-  for (const [k, v] of Object.entries(params)) {
-    if (typeof v === "string") merged[k] = v;
+  const params: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "string") params[k] = v;
   }
   for (const [k, v] of Object.entries(filterParams)) {
-    merged[k] = v;
+    params[k] = v;
   }
 
-  const queryString = new URLSearchParams(merged).toString();
-
-  const poolsRes = await fetch(
-    `${BASE_URL}/api/v1/pools${queryString ? `?${queryString}` : ""}`,
-    { cache: "no-store" },
-  );
-
-  const pools: PaginatedResponse<PoolListItem> = await poolsRes.json();
+  const pools = await queryPools(params);
 
   return (
     <div className="flex-1 flex flex-col">

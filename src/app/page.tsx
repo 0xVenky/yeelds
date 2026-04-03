@@ -5,33 +5,23 @@ import { DiscoveryTabs } from "@/components/DiscoveryTabs";
 import { FilterBar } from "@/components/FilterBar";
 import { PoolTable } from "@/components/PoolTable";
 import { Pagination } from "@/components/Pagination";
-import type { PaginatedResponse, PoolListItem, StatsResponse } from "@/lib/types";
-import { getBaseUrl } from "@/lib/utils";
-
-const BASE_URL = getBaseUrl();
+import { queryPools, queryStats } from "@/lib/api/query";
 
 export default async function HomePage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
-  const queryString = new URLSearchParams(
-    Object.entries(params).reduce<Record<string, string>>((acc, [k, v]) => {
-      if (typeof v === "string") acc[k] = v;
-      return acc;
-    }, {}),
-  ).toString();
+  const raw = await searchParams;
+  const params: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "string") params[k] = v;
+  }
 
-  const [poolsRes, statsRes] = await Promise.all([
-    fetch(`${BASE_URL}/api/v1/pools${queryString ? `?${queryString}` : ""}`, {
-      cache: "no-store",
-    }),
-    fetch(`${BASE_URL}/api/v1/stats`, { cache: "no-store" }),
+  const [pools, stats] = await Promise.all([
+    queryPools(params),
+    queryStats(),
   ]);
-
-  const pools: PaginatedResponse<PoolListItem> = await poolsRes.json();
-  const stats: StatsResponse = await statsRes.json();
 
   return (
     <div className="flex-1 flex flex-col">

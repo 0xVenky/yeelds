@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { PoolDetail } from "@/lib/types";
 import { formatProtocolName, formatPoolType, formatTvl } from "@/lib/utils";
 import { YieldCard } from "@/components/pool-detail/YieldCard";
 import { RiskCard } from "@/components/pool-detail/RiskCard";
@@ -8,9 +7,7 @@ import { ExposureCard } from "@/components/pool-detail/ExposureCard";
 import { SimulationCard } from "@/components/pool-detail/SimulationCard";
 import { CampaignList } from "@/components/pool-detail/CampaignList";
 import { RiskBadges } from "@/components/RiskBadges";
-import { getBaseUrl } from "@/lib/utils";
-
-const BASE_URL = getBaseUrl();
+import { queryPoolById } from "@/lib/api/query";
 
 function chainLabel(chain: string): string {
   return chain.charAt(0).toUpperCase() + chain.slice(1);
@@ -23,15 +20,11 @@ export default async function PoolDetailPage({
 }) {
   const { id } = await params;
 
-  const res = await fetch(`${BASE_URL}/api/v1/pools/${id}`, {
-    cache: "no-store",
-  });
+  const pool = await queryPoolById(id);
 
-  if (!res.ok) {
+  if (!pool) {
     notFound();
   }
-
-  const pool: PoolDetail = await res.json();
 
   return (
     <div className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6">
