@@ -6,8 +6,9 @@ import { FilterBar } from "@/components/FilterBar";
 import { PoolTable } from "@/components/PoolTable";
 import { Pagination } from "@/components/Pagination";
 import type { PaginatedResponse, PoolListItem, StatsResponse } from "@/lib/types";
+import { getBaseUrl } from "@/lib/utils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+const BASE_URL = getBaseUrl();
 
 export default async function HomePage({
   searchParams,

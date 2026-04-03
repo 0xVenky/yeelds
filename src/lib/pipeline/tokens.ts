@@ -1,5 +1,4 @@
-import { readFileSync } from "fs";
-import { join } from "path";
+import seedData from "../../../docs/seed/tokens.json";
 
 export type TokenSeed = {
   address: string;
@@ -21,25 +20,11 @@ export type TokenSeed = {
 // Key: "chain:address" (address lowercased)
 const tokenMap = new Map<string, TokenSeed>();
 
-function loadTokens(): void {
-  try {
-    const seedPath = join(process.cwd(), "docs", "seed", "tokens.json");
-    const raw: unknown[] = JSON.parse(readFileSync(seedPath, "utf8"));
-
-    for (const entry of raw) {
-      const token = entry as TokenSeed;
-      const key = `${token.chain}:${token.address.toLowerCase()}`;
-      tokenMap.set(key, token);
-    }
-
-    console.log(`Token lookup: loaded ${tokenMap.size} entries`);
-  } catch (e) {
-    console.warn(`Token lookup: failed to load seed — ${(e as Error).message}. All tokens will show as UNKNOWN.`);
-  }
+for (const entry of seedData) {
+  const token = entry as TokenSeed;
+  const key = `${token.chain}:${token.address.toLowerCase()}`;
+  tokenMap.set(key, token);
 }
-
-// Load on first import
-loadTokens();
 
 export function lookupToken(address: string, chain: string): TokenSeed | null {
   const key = `${chain}:${address.toLowerCase()}`;

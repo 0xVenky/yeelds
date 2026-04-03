@@ -7,8 +7,9 @@ import { Pagination } from "@/components/Pagination";
 import { IncentivesToggle } from "@/components/IncentivesToggle";
 import { formatTvl } from "@/lib/utils";
 import type { PaginatedResponse, PoolListItem } from "@/lib/types";
+import { getBaseUrl } from "@/lib/utils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+const BASE_URL = getBaseUrl();
 
 type AssetClassLayoutProps = {
   title: string;

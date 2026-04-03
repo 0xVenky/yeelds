@@ -69,6 +69,12 @@ export function formatPoolType(type: string): string {
   return map[type] ?? type;
 }
 
+export function getBaseUrl(): string {
+  // Vercel provides VERCEL_URL automatically (without protocol)
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+}
+
 const PROTOCOL_DISPLAY_NAMES: Record<string, string> = {
   "aave-v3": "Aave V3",
   "uniswap-v3": "Uniswap V3",

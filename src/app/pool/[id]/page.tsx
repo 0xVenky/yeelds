@@ -8,8 +8,9 @@ import { ExposureCard } from "@/components/pool-detail/ExposureCard";
 import { SimulationCard } from "@/components/pool-detail/SimulationCard";
 import { CampaignList } from "@/components/pool-detail/CampaignList";
 import { RiskBadges } from "@/components/RiskBadges";
+import { getBaseUrl } from "@/lib/utils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+const BASE_URL = getBaseUrl();
 
 function chainLabel(chain: string): string {
   return chain.charAt(0).toUpperCase() + chain.slice(1);
