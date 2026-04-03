@@ -32,7 +32,7 @@ export default async function HomePage({
   const stats: StatsResponse = await statsRes.json();
 
   return (
-    <main className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col">
       <Header stats={stats} />
       <Suspense>
         <DiscoveryTabs />
@@ -48,6 +48,6 @@ export default async function HomePage({
         totalPages={pools.pagination.total_pages}
         total={pools.pagination.total}
       />
-    </main>
+    </div>
   );
 }

@@ -27,3 +27,27 @@ export const MAX_PAGE_SIZE = 100;
 
 // APR bounds
 export const MAX_REASONABLE_APR = 10000; // flag anything above this
+
+// Yield source types — where the yield comes from
+export const YIELD_SOURCE_TYPES = [
+  "trading_fees", "lending_interest", "staking_rewards",
+  "strategy_returns", "rwa_yield",
+] as const;
+
+export type YieldSourceType = (typeof YIELD_SOURCE_TYPES)[number];
+
+// Protocols whose yield derives from real-world assets (overrides pool-type inference)
+// Slugs verified against DeFi Llama pool data 2026-04-03
+export const RWA_PROTOCOLS = [
+  "sky-lending",          // sDAI/sUSDS — US Treasuries
+  "spark-savings",        // sDAI — US Treasuries (MakerDAO/Sky)
+  "ondo-yield-assets",    // USDY, OUSG — US Treasuries
+  "blackrock-buidl",      // BUIDL — tokenized money market fund
+  "superstate-ustb",      // USTB — tokenized T-bills
+  "superstate-uscc",      // USCC — tokenized short-term bonds
+  "maple",                // Institutional lending to real-world borrowers
+  "matrixdock-stbt",      // STBT — T-bill backed
+  "circle-usyc",          // USYC (Hashnote) — US Yield Coin
+  "theo-network-thbill",  // THBILL — T-bill token
+  "usual-usd0",           // USD0 — backed by US T-bills
+] as const;

@@ -4,6 +4,9 @@ export type TokenInfo = {
   symbol: string;
   chain: string;
   is_stable: boolean;
+  asset_class: string | null;
+  is_yield_bearing: boolean;
+  base_token: string | null;
 };
 
 // Pool as returned by GET /api/v1/pools
@@ -13,6 +16,7 @@ export type PoolListItem = {
   protocol: string;
   protocol_url: string | null;
   pool_type: string;
+  yield_source: string;
   symbol: string;
   tvl_usd: number;
   yield: {
@@ -25,11 +29,14 @@ export type PoolListItem = {
   exposure: {
     type: string;
     category: string | null;
+    asset_class: string | null;
+    has_yield_bearing_token: boolean;
     underlying_tokens: TokenInfo[];
   };
   risk: {
     contract_age_days: number | null;
     is_audited: boolean | null;
+    is_verified: boolean | null;
     top_lp_concentration: number | null;
     underlying_depeg_risk: string | null;
   };

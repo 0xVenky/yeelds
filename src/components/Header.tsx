@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { StatsResponse } from "@/lib/types";
 import { formatTvl } from "@/lib/utils";
+import { IncentivesToggle } from "./IncentivesToggle";
 
 export function Header({ stats }: { stats: StatsResponse }) {
   const refreshedAgo = stats.last_refreshed
@@ -7,24 +9,24 @@ export function Header({ stats }: { stats: StatsResponse }) {
     : null;
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-      <h1 className="text-xl font-bold tracking-tight font-[family-name:var(--font-geist-mono)]">
-        YEELDS
-      </h1>
-      <div className="flex items-center gap-4 text-sm text-zinc-400">
+    <div className="flex items-center justify-between px-4 sm:px-6 py-2 border-b border-gray-100 dark:border-zinc-800/50">
+      <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-zinc-500">
         <span>{stats.total_pools} pools</span>
-        <span aria-hidden="true">·</span>
+        <span aria-hidden="true">&middot;</span>
         <span>{formatTvl(stats.total_tvl_usd)} TVL</span>
-        <span aria-hidden="true">·</span>
+        <span aria-hidden="true">&middot;</span>
         <span>{stats.chains_covered} chains</span>
         {refreshedAgo && (
           <>
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">&middot;</span>
             <span>Updated {refreshedAgo}</span>
           </>
         )}
       </div>
-    </header>
+      <Suspense>
+        <IncentivesToggle />
+      </Suspense>
+    </div>
   );
 }
 

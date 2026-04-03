@@ -1,22 +1,25 @@
 import type { PaginatedResponse, PoolListItem } from "@/lib/types";
-import {
-  formatTvl,
-  formatApr,
-  formatUsd,
-  formatPoolType,
-  formatProtocolName,
-} from "@/lib/utils";
+import { formatTvl, formatApr, formatUsd, formatPoolType, formatProtocolName } from "@/lib/utils";
 import { PoolRow } from "./PoolRow";
+import { SimulationTooltip } from "./SimulationTooltip";
+import { StabilityBadge } from "./StabilityBadge";
+import { ShareButton } from "./ShareButton";
+import { SortHeader } from "./SortHeader";
 
-const POOL_TYPE_STYLES: Record<string, string> = {
-  amm_lp: "bg-blue-900/50 text-blue-300",
-  lending: "bg-green-900/50 text-green-300",
-  vault: "bg-purple-900/50 text-purple-300",
-  staking: "bg-amber-900/50 text-amber-300",
+const CHAIN_COLORS: Record<string, string> = {
+  ethereum: "bg-blue-500",
+  arbitrum: "bg-sky-400",
+  base: "bg-blue-600",
 };
 
-function chainLabel(chain: string): string {
-  return chain.charAt(0).toUpperCase() + chain.slice(1);
+function ChainDot({ chain }: { chain: string }) {
+  return (
+    <span
+      className={`inline-block h-2.5 w-2.5 rounded-full ${CHAIN_COLORS[chain] ?? "bg-gray-400 dark:bg-zinc-500"}`}
+      title={chain.charAt(0).toUpperCase() + chain.slice(1)}
+      aria-label={chain.charAt(0).toUpperCase() + chain.slice(1)}
+    />
+  );
 }
 
 export function PoolTable({ data }: { data: PaginatedResponse<PoolListItem> }) {
@@ -24,7 +27,7 @@ export function PoolTable({ data }: { data: PaginatedResponse<PoolListItem> }) {
 
   if (pools.length === 0) {
     return (
-      <div className="text-center py-16 text-zinc-500">
+      <div className="text-center py-16 text-gray-400 dark:text-zinc-500">
         No pools found matching your filters.
       </div>
     );
@@ -32,53 +35,112 @@ export function PoolTable({ data }: { data: PaginatedResponse<PoolListItem> }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[700px]">
         <thead>
-          <tr className="border-b border-zinc-800 text-left text-xs text-zinc-500 uppercase tracking-wider">
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium">Chain</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium">Protocol</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium">Pool</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium">Type</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium text-right">TVL</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium text-right">APR</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium text-right">Base</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium text-right">Reward</th>
-            <th className="sticky top-0 bg-zinc-950 px-4 py-3 font-medium text-right">Daily/$1K</th>
+          <tr className="border-b border-gray-100 dark:border-zinc-800 text-left text-xs text-gray-400 dark:text-zinc-500 uppercase tracking-wider">
+            <th className="sticky top-0 bg-white dark:bg-zinc-950 px-4 py-3 font-medium w-10">
+              Chain
+            </th>
+            <th className="sticky top-0 bg-white dark:bg-zinc-950 px-4 py-3 font-medium">
+              Protocol
+            </th>
+            <th className="sticky top-0 bg-white dark:bg-zinc-950 px-4 py-3 font-medium">
+              Action
+            </th>
+            <SortHeader label="TVL" field="tvl_usd" align="right" />
+            <th className="sticky top-0 bg-white dark:bg-zinc-950 px-4 py-3 font-medium hidden md:table-cell">
+              Stability
+            </th>
+            <SortHeader label="APR" field="apr_total" align="right" />
+            <th className="sticky top-0 bg-white dark:bg-zinc-950 px-4 py-3 font-medium text-right hidden md:table-cell">
+              Daily Rewards
+            </th>
+            <th className="sticky top-0 bg-white dark:bg-zinc-950 px-4 py-3 font-medium w-20">
+              Actions
+            </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800/50">
+        <tbody className="divide-y divide-gray-50 dark:divide-zinc-800/50">
           {pools.map((pool) => (
             <PoolRow key={pool.id} href={`/pool/${pool.id}`}>
-              <td className="px-4 py-3 text-zinc-400">{chainLabel(pool.chain)}</td>
-              <td className="px-4 py-3 font-medium text-zinc-200">
+              {/* Chain */}
+              <td className="px-4 py-3">
+                <ChainDot chain={pool.chain} />
+              </td>
+              {/* Protocol */}
+              <td className="px-4 py-3 font-medium text-gray-800 dark:text-zinc-200">
                 {formatProtocolName(pool.protocol)}
               </td>
-              <td className="px-4 py-3 font-[family-name:var(--font-geist-mono)] text-zinc-300">
-                {pool.symbol}
-              </td>
+              {/* Action */}
               <td className="px-4 py-3">
-                <span
-                  className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
-                    POOL_TYPE_STYLES[pool.pool_type] ?? "bg-zinc-800 text-zinc-400"
-                  }`}
-                >
-                  {formatPoolType(pool.pool_type)}
-                </span>
+                <div className="text-gray-700 dark:text-zinc-300">
+                  <span className="text-gray-400 dark:text-zinc-500 text-xs">
+                    {formatPoolType(pool.pool_type)}
+                  </span>{" "}
+                  <span className="font-[family-name:var(--font-geist-mono)]">
+                    {pool.symbol}
+                  </span>
+                </div>
               </td>
-              <td className="px-4 py-3 text-right font-[family-name:var(--font-geist-mono)] text-zinc-200">
+              {/* TVL */}
+              <td className="px-4 py-3 text-right font-[family-name:var(--font-geist-mono)] text-gray-700 dark:text-zinc-200">
                 {formatTvl(pool.tvl_usd)}
               </td>
-              <td className="px-4 py-3 text-right font-[family-name:var(--font-geist-mono)] text-emerald-400 font-medium">
-                {formatApr(pool.yield.apr_total)}
+              {/* Stability */}
+              <td className="px-4 py-3 hidden md:table-cell">
+                <StabilityBadge category={pool.exposure.category} />
               </td>
-              <td className="px-4 py-3 text-right font-[family-name:var(--font-geist-mono)] text-green-400/70">
-                {formatApr(pool.yield.apr_base)}
+              {/* APR */}
+              <td className="px-4 py-3 text-right">
+                <div className="relative group/apr">
+                  <div className="font-[family-name:var(--font-geist-mono)] text-emerald-600 dark:text-emerald-400 font-medium cursor-default">
+                    {formatApr(pool.yield.apr_total)}
+                  </div>
+                  {(pool.yield.apr_base !== null || pool.yield.apr_reward !== null) && (
+                    <div className="absolute hidden group-hover/apr:block bottom-full right-0 mb-1.5 z-20 w-44 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-lg text-left text-xs" role="tooltip">
+                      <div className="flex justify-between mb-1.5">
+                        <span className="text-gray-500 dark:text-zinc-400">Base</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] text-green-600 dark:text-green-400">{formatApr(pool.yield.apr_base)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-zinc-400">Reward</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] text-blue-600 dark:text-blue-400">{formatApr(pool.yield.apr_reward)}</span>
+                      </div>
+                      {pool.incentives_summary.sources.length > 0 && (
+                        <div className="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-zinc-700 text-gray-400 dark:text-zinc-500">
+                          via {pool.incentives_summary.sources.join(", ")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </td>
-              <td className="px-4 py-3 text-right font-[family-name:var(--font-geist-mono)] text-blue-400/70">
-                {formatApr(pool.yield.apr_reward)}
+              {/* Daily Rewards */}
+              <td className="px-4 py-3 text-right hidden md:table-cell">
+                <SimulationTooltip aprTotal={pool.yield.apr_total}>
+                  <span className="cursor-help border-b border-dotted border-gray-300 dark:border-zinc-600 font-[family-name:var(--font-geist-mono)] text-gray-700 dark:text-zinc-300">
+                    {formatUsd(pool.simulation.daily_earnings_per_1k)}
+                  </span>
+                </SimulationTooltip>
               </td>
-              <td className="px-4 py-3 text-right font-[family-name:var(--font-geist-mono)] text-zinc-300">
-                {formatUsd(pool.simulation.daily_earnings_per_1k)}
+              {/* Actions */}
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  {/* Star (decorative) */}
+                  <span
+                    className="p-1.5 rounded text-gray-300 dark:text-zinc-600"
+                    aria-label="Bookmark (coming soon)"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path
+                        fillRule="evenodd"
+                        d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </span>
+                  <ShareButton poolId={pool.id} />
+                </div>
               </td>
             </PoolRow>
           ))}

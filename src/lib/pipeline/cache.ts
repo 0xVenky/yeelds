@@ -1,6 +1,7 @@
 import type { PoolListItem } from "@/lib/types";
 import { fetchDefiLlamaPools } from "@/lib/pipeline/fetchers/defillama";
 import { normalizeDefiLlamaPool } from "@/lib/pipeline/normalizers/normalize";
+import { enrichPoolsWithRisk } from "@/lib/pipeline/enrichers/block-explorer";
 
 let cachedPools: PoolListItem[] = [];
 let lastRefreshed: Date | null = null;
@@ -40,6 +41,17 @@ export async function refreshCache(): Promise<{ count: number; errors: string[] 
       } catch (e) {
         errors.push(`Normalize failed for ${raw.pool}: ${(e as Error).message}`);
       }
+    }
+
+    // Enrich top 100 pools by TVL with risk signals (non-blocking)
+    const top100 = [...normalized]
+      .sort((a, b) => b.tvl_usd - a.tvl_usd)
+      .slice(0, 100);
+    try {
+      await enrichPoolsWithRisk(top100);
+    } catch (e) {
+      errors.push(`Risk enrichment failed: ${(e as Error).message}`);
+      // Continue — pools load fine with null risk fields
     }
 
     cachedPools = normalized;

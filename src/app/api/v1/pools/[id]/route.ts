@@ -21,7 +21,7 @@ export async function GET(
     risk_detail: {
       contract_age_days: pool.risk.contract_age_days,
       contract_address: null,
-      is_verified: null,
+      is_verified: pool.risk.is_verified,
       is_audited: pool.risk.is_audited,
       audit_firms: null,
       top_lp_concentration: pool.risk.top_lp_concentration,

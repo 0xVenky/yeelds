@@ -4,10 +4,21 @@ import type { PoolQueryParams } from "@/lib/api/params";
 export function filterPools(pools: PoolListItem[], params: PoolQueryParams): PoolListItem[] {
   let result = pools.filter(p => p.tvl_usd > 0); // always exclude zero-TVL
 
+  if (params.search) {
+    const q = params.search.toLowerCase();
+    result = result.filter(p =>
+      p.symbol.toLowerCase().includes(q) ||
+      p.protocol.toLowerCase().includes(q)
+    );
+  }
+
   if (params.chain) result = result.filter(p => p.chain === params.chain);
   if (params.pool_type) result = result.filter(p => p.pool_type === params.pool_type);
   if (params.protocol) result = result.filter(p => p.protocol === params.protocol);
   if (params.exposure_category) result = result.filter(p => p.exposure.category === params.exposure_category);
+  if (params.asset_class) result = result.filter(p => p.exposure.asset_class === params.asset_class);
+  if (params.yield_source) result = result.filter(p => p.yield_source === params.yield_source);
+  if (params.yield_bearing) result = result.filter(p => p.exposure.has_yield_bearing_token);
   if (params.min_tvl) result = result.filter(p => p.tvl_usd >= params.min_tvl!);
   if (params.min_apr) result = result.filter(p => p.yield.apr_total >= params.min_apr!);
   if (params.max_apr) result = result.filter(p => p.yield.apr_total <= params.max_apr!);
