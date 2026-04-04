@@ -114,4 +114,29 @@ export type StatsResponse = {
   protocols_covered: number;
   last_refreshed: string | null;
   refresh_interval_minutes: number;
+  benchmarks?: Record<string, AssetClassBenchmark>;
+};
+
+// Asset-class benchmark — computed during cache refresh
+export type AssetClassBenchmark = {
+  asset_class: string;
+  benchmark_apr: number;
+  pool_count: number;
+  total_tvl_usd: number;
+  apr_range: { min: number; max: number };
+  qualifying_pool_count: number;
+  top_pools: {
+    id: string;
+    protocol: string;
+    symbol: string;
+    apr_total: number;
+    tvl_usd: number;
+  }[];
+  computed_at: string;
+};
+
+// Benchmarks API response — GET /api/v1/benchmarks
+export type BenchmarksResponse = {
+  benchmarks: Record<string, AssetClassBenchmark>;
+  last_refreshed: string | null;
 };

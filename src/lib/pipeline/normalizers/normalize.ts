@@ -1,6 +1,6 @@
 import type { DefiLlamaPool } from "@/lib/pipeline/fetchers/defillama";
 import type { PoolListItem, TokenInfo } from "@/lib/types";
-import { DEFILLAMA_CHAIN_MAP, RWA_PROTOCOLS } from "@/lib/constants";
+import { DEFILLAMA_CHAIN_MAP, RWA_PROTOCOLS, PROTOCOL_APP_URLS } from "@/lib/constants";
 import { apyToApr, computeSimulation } from "@/lib/utils";
 import { lookupToken } from "@/lib/pipeline/tokens";
 
@@ -65,12 +65,20 @@ function classifyExposure(tokens: TokenInfo[], defiLlamaStablecoin: boolean): st
   return null;
 }
 
-function deriveAssetClass(tokens: TokenInfo[]): string | null {
+function deriveAssetClass(tokens: TokenInfo[], poolType: string, symbol: string): string | null {
   if (tokens.length === 0) return null;
   const classes = tokens.map(t => t.asset_class).filter(Boolean) as string[];
   if (classes.length === 0) return null;
   // Some tokens unclassified → we can't determine the pool's asset class
   if (classes.length !== tokens.length) return null;
+
+  // AMM LP pools: if symbol suggests multiple tokens (e.g. "HUBCAP-USDC")
+  // but we only resolved one, the data is incomplete — don't classify
+  if (poolType === "amm_lp" && tokens.length === 1) {
+    const parts = symbol.split(/[-\/]/);
+    if (parts.length > 1) return null;
+  }
+
   // All same class → that class
   if (new Set(classes).size === 1) return classes[0];
   return "mixed";
@@ -123,7 +131,7 @@ export function normalizeDefiLlamaPool(raw: DefiLlamaPool): PoolListItem {
     id: raw.pool,
     chain,
     protocol: raw.project,
-    protocol_url: null,
+    protocol_url: PROTOCOL_APP_URLS[raw.project] ?? `https://defillama.com/protocol/${raw.project}`,
     pool_type: poolType,
     yield_source: deriveYieldSource(raw.project, poolType),
     symbol: raw.symbol,
@@ -138,7 +146,7 @@ export function normalizeDefiLlamaPool(raw: DefiLlamaPool): PoolListItem {
     exposure: {
       type: mapExposureType(raw.exposure),
       category: classifyExposure(underlyingTokens, raw.stablecoin),
-      asset_class: deriveAssetClass(underlyingTokens),
+      asset_class: deriveAssetClass(underlyingTokens, poolType, raw.symbol),
       has_yield_bearing_token: hasYieldBearingToken(underlyingTokens),
       underlying_tokens: underlyingTokens,
     },

@@ -1,5 +1,5 @@
 import type { PoolDetail } from "@/lib/types";
-import { formatApr } from "@/lib/utils";
+import { formatApr, formatYieldSource } from "@/lib/utils";
 import { YieldBreakdownExpanded } from "@/components/YieldBreakdown";
 
 export function YieldCard({ pool }: { pool: PoolDetail }) {
@@ -16,13 +16,13 @@ export function YieldCard({ pool }: { pool: PoolDetail }) {
 
       {/* APR breakdown bar */}
       <div className="mb-4">
-        <YieldBreakdownExpanded yield={y} />
+        <YieldBreakdownExpanded yield={{ ...y, yieldSource: pool.yield_source }} />
       </div>
 
       <dl className="space-y-2 text-sm">
         {y.apr_base_7d !== null && (
           <div className="flex justify-between">
-            <dt className="text-gray-500 dark:text-zinc-400">7d Avg Base</dt>
+            <dt className="text-gray-500 dark:text-zinc-400">7d Avg {formatYieldSource(pool.yield_source)}</dt>
             <dd className="font-[family-name:var(--font-geist-mono)] text-gray-700 dark:text-zinc-300">
               {formatApr(y.apr_base_7d)}
             </dd>

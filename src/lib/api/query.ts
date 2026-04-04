@@ -1,6 +1,6 @@
-import { ensureCachePopulated, getCachedPools, getLastRefreshed } from "@/lib/pipeline/cache";
+import { ensureCachePopulated, getCachedPools, getCachedBenchmarks, getLastRefreshed } from "@/lib/pipeline/cache";
 import { filterPools, applyDiscoveryMode, sortPools, paginatePools } from "@/lib/api/pool-query";
-import type { PoolListItem, PoolDetail, PaginatedResponse, StatsResponse } from "@/lib/types";
+import type { PoolListItem, PoolDetail, PaginatedResponse, StatsResponse, BenchmarksResponse } from "@/lib/types";
 
 type QueryParams = {
   [key: string]: string | undefined;
@@ -96,5 +96,19 @@ export async function queryStats(): Promise<StatsResponse> {
     protocols_covered: new Set(pools.map(p => p.protocol)).size,
     last_refreshed: getLastRefreshed()?.toISOString() ?? null,
     refresh_interval_minutes: 15,
+    benchmarks: getCachedBenchmarks(),
+  };
+}
+
+/**
+ * Get asset-class benchmarks directly from the in-memory cache.
+ * Used by server components for benchmark display — no HTTP self-fetch.
+ */
+export async function queryBenchmarks(): Promise<BenchmarksResponse> {
+  await ensureCachePopulated();
+
+  return {
+    benchmarks: getCachedBenchmarks(),
+    last_refreshed: getLastRefreshed()?.toISOString() ?? null,
   };
 }

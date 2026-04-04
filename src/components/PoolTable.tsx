@@ -1,5 +1,5 @@
 import type { PaginatedResponse, PoolListItem } from "@/lib/types";
-import { formatTvl, formatApr, formatUsd, formatPoolType, formatProtocolName } from "@/lib/utils";
+import { formatTvl, formatApr, formatUsd, formatPoolType, formatProtocolName, formatYieldSource } from "@/lib/utils";
 import { PoolRow } from "./PoolRow";
 import { SimulationTooltip } from "./SimulationTooltip";
 import { StabilityBadge } from "./StabilityBadge";
@@ -99,11 +99,11 @@ export function PoolTable({ data }: { data: PaginatedResponse<PoolListItem> }) {
                   {(pool.yield.apr_base !== null || pool.yield.apr_reward !== null) && (
                     <div className="absolute hidden group-hover/apr:block bottom-full right-0 mb-1.5 z-20 w-44 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-lg text-left text-xs" role="tooltip">
                       <div className="flex justify-between mb-1.5">
-                        <span className="text-gray-500 dark:text-zinc-400">Base</span>
+                        <span className="text-gray-500 dark:text-zinc-400">{formatYieldSource(pool.yield_source)}</span>
                         <span className="font-[family-name:var(--font-geist-mono)] text-green-600 dark:text-green-400">{formatApr(pool.yield.apr_base)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-zinc-400">Reward</span>
+                        <span className="text-gray-500 dark:text-zinc-400">Incentive rewards</span>
                         <span className="font-[family-name:var(--font-geist-mono)] text-blue-600 dark:text-blue-400">{formatApr(pool.yield.apr_reward)}</span>
                       </div>
                       {pool.incentives_summary.sources.length > 0 && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 export function SortHeader({
   label,
@@ -12,6 +12,7 @@ export function SortHeader({
   align?: "right";
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentSort = searchParams.get("sort");
   const currentOrder = searchParams.get("order") ?? "desc";
@@ -27,7 +28,7 @@ export function SortHeader({
     }
     params.delete("page");
     const qs = params.toString();
-    router.push(qs ? `/?${qs}` : "/");
+    router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
   return (

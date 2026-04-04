@@ -1,9 +1,10 @@
-import { formatApr } from "@/lib/utils";
+import { formatApr, formatYieldSource } from "@/lib/utils";
 
 type YieldData = {
   apr_total: number;
   apr_base: number | null;
   apr_reward: number | null;
+  yieldSource: string;
 };
 
 /**
@@ -28,7 +29,7 @@ export function YieldBreakdownExpanded({ yield: y }: { yield: YieldData }) {
         <div
           className="flex h-3 w-full rounded-full overflow-hidden"
           role="img"
-          aria-label={`Base ${formatApr(y.apr_base)}, Reward ${formatApr(y.apr_reward)}`}
+          aria-label={`${formatYieldSource(y.yieldSource)} ${formatApr(y.apr_base)}, Incentive rewards ${formatApr(y.apr_reward)}`}
         >
           {basePct > 0 && (
             <div
@@ -51,10 +52,10 @@ export function YieldBreakdownExpanded({ yield: y }: { yield: YieldData }) {
       {hasBreakdown && (
         <div className="flex justify-between text-xs">
           <span className="text-green-600 dark:text-green-400">
-            Base: {formatApr(y.apr_base)}
+            {formatYieldSource(y.yieldSource)}: {formatApr(y.apr_base)}
           </span>
           <span className="text-blue-600 dark:text-blue-400">
-            Reward: {formatApr(y.apr_reward)}
+            Incentive rewards: {formatApr(y.apr_reward)}
           </span>
         </div>
       )}

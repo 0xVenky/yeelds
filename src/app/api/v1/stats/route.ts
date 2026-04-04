@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ensureCachePopulated, getCachedPools, getLastRefreshed } from "@/lib/pipeline/cache";
+import { ensureCachePopulated, getCachedPools, getCachedBenchmarks, getLastRefreshed } from "@/lib/pipeline/cache";
 import type { StatsResponse } from "@/lib/types";
 
 export async function GET() {
@@ -13,6 +13,7 @@ export async function GET() {
     protocols_covered: new Set(pools.map(p => p.protocol)).size,
     last_refreshed: getLastRefreshed()?.toISOString() ?? null,
     refresh_interval_minutes: 15,
+    benchmarks: getCachedBenchmarks(),
   };
 
   return NextResponse.json(response, {

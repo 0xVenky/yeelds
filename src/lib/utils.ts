@@ -69,6 +69,20 @@ export function formatPoolType(type: string): string {
   return map[type] ?? type;
 }
 
+/**
+ * Format yield source slug to display label.
+ */
+export function formatYieldSource(source: string): string {
+  const map: Record<string, string> = {
+    trading_fees: "Trading fees",
+    lending_interest: "Lending interest",
+    staking_rewards: "Staking rewards",
+    strategy_returns: "Strategy returns",
+    rwa_yield: "RWA yield",
+  };
+  return map[source] ?? "Base";
+}
+
 export function getBaseUrl(): string {
   // Vercel provides VERCEL_URL automatically (without protocol)
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;

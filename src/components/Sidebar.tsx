@@ -32,6 +32,7 @@ const DISCOVER_ITEMS: NavItem[] = [
 ];
 
 const RESEARCH_ITEMS: NavItem[] = [
+  { label: "Yield Feed", href: "/feed" },
   { label: "Research", disabled: true },
   { label: "Copy trading", disabled: true },
   { label: "Bookmarked", disabled: true },
@@ -161,9 +162,23 @@ export function Sidebar() {
 
         {/* RESEARCH */}
         <Section title="RESEARCH">
-          {RESEARCH_ITEMS.map((item) => (
-            <DisabledItem key={item.label} label={item.label} />
-          ))}
+          {RESEARCH_ITEMS.map((item) =>
+            item.disabled ? (
+              <DisabledItem key={item.label} label={item.label} />
+            ) : (
+              <button
+                key={item.label}
+                onClick={() => navigateTo(item)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                  isActive(item)
+                    ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
+                    : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
+                }`}
+              >
+                {item.label}
+              </button>
+            )
+          )}
         </Section>
 
         {/* DEALS */}
