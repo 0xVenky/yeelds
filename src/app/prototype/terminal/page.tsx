@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { queryBenchmarks, queryStats } from "@/lib/api/query";
 import { formatTvl, formatApr, formatProtocolName, computeSimulation } from "@/lib/utils";

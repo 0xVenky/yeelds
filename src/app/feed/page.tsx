@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { getFeedItems, ensureFeedPopulated } from "@/lib/feed/store";
 import { ensureCachePopulated } from "@/lib/pipeline/cache";
