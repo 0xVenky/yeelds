@@ -3,20 +3,16 @@ import { fetchAllFeeds } from "./fetcher";
 
 let feedItems: FeedItem[] = [];
 let feedRefreshed = false;
-let isRefreshing = false;
+let refreshPromise: Promise<void> | null = null;
 
 export function getFeedItems(): FeedItem[] {
   return feedItems;
 }
 
 /**
- * Refresh feed from RSS sources. Called during cache refresh cycle.
- * Non-blocking — feed failures don't affect pool data.
+ * Refresh feed from RSS sources.
  */
 export async function refreshFeed(): Promise<void> {
-  if (isRefreshing) return;
-  isRefreshing = true;
-
   try {
     const { items } = await fetchAllFeeds();
     if (items.length > 0) {
@@ -25,13 +21,24 @@ export async function refreshFeed(): Promise<void> {
     }
   } catch (e) {
     console.warn(`Feed refresh failed: ${(e as Error).message}`);
-  } finally {
-    isRefreshing = false;
   }
 }
 
+/**
+ * Ensure feed is populated. Waits for any in-progress refresh.
+ * Called by the feed page — must block until data is ready.
+ */
 export async function ensureFeedPopulated(): Promise<void> {
-  if (!feedRefreshed && !isRefreshing) {
-    await refreshFeed();
+  if (feedRefreshed) return;
+
+  // If a refresh is already running, wait for it
+  if (refreshPromise) {
+    await refreshPromise;
+    return;
   }
+
+  // Start a new refresh and wait
+  refreshPromise = refreshFeed();
+  await refreshPromise;
+  refreshPromise = null;
 }
