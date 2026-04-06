@@ -3,6 +3,7 @@ import { fetchDefiLlamaPools } from "@/lib/pipeline/fetchers/defillama";
 import { normalizeDefiLlamaPool } from "@/lib/pipeline/normalizers/normalize";
 import { enrichPoolsWithRisk } from "@/lib/pipeline/enrichers/block-explorer";
 import { computeBenchmarks } from "@/lib/pipeline/benchmarks";
+import { refreshFeed } from "@/lib/feed/store";
 
 let cachedPools: PoolListItem[] = [];
 let cachedBenchmarks: Record<string, AssetClassBenchmark> = {};
@@ -62,6 +63,11 @@ export async function refreshCache(): Promise<{ count: number; errors: string[] 
       .slice(0, 100);
     enrichPoolsWithRisk(top100).catch((e) => {
       console.warn(`Background risk enrichment failed: ${(e as Error).message}`);
+    });
+
+    // Refresh RSS feed in background (don't block page render)
+    refreshFeed().catch((e) => {
+      console.warn(`Background feed refresh failed: ${(e as Error).message}`);
     });
 
     return { count: normalized.length, errors };

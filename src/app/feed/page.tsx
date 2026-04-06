@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { getFeedItems } from "@/lib/feed/store";
+import { getFeedItems, ensureFeedPopulated } from "@/lib/feed/store";
+import { ensureCachePopulated } from "@/lib/pipeline/cache";
 import { FeedItem } from "@/components/feed/FeedItem";
 
-export default function FeedPage() {
+export default async function FeedPage() {
+  await ensureCachePopulated();
+  await ensureFeedPopulated();
   const sorted = getFeedItems();
 
   return (
