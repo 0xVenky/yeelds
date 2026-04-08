@@ -14,7 +14,10 @@ export function filterPools(pools: PoolListItem[], params: PoolQueryParams): Poo
 
   if (params.chain) result = result.filter(p => p.chain === params.chain);
   if (params.pool_type) result = result.filter(p => p.pool_type === params.pool_type);
-  if (params.protocol) result = result.filter(p => p.protocol === params.protocol);
+  if (params.protocol) {
+    const slugs = params.protocol.split(",");
+    result = result.filter(p => slugs.includes(p.protocol));
+  }
   if (params.exposure_category) result = result.filter(p => p.exposure.category === params.exposure_category);
   if (params.asset_class) {
     if (params.asset_class === "stablecoin") {

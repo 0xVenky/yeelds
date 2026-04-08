@@ -3,6 +3,7 @@ import { filterPools, applyDiscoveryMode, sortPools, paginatePools } from "@/lib
 import type { PoolListItem, PoolDetail, PaginatedResponse, StatsResponse, BenchmarksResponse } from "@/lib/types";
 import { ensureDealsPopulated, getDeals } from "@/lib/deals/store";
 import type { Deal } from "@/lib/deals/types";
+import { CURATED_PROTOCOLS, PROTOCOL_APP_URLS } from "@/lib/constants";
 
 type QueryParams = {
   [key: string]: string | undefined;
@@ -125,4 +126,67 @@ export function queryDeals(): { deals: Deal[]; total: number } {
   ensureDealsPopulated();
   const deals = getDeals();
   return { deals, total: deals.length };
+}
+
+// --- Protocol aggregation ---
+
+export type ProtocolSummary = {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  pool_count: number;
+  chains: string[];
+  total_tvl_usd: number;
+  avg_apr: number;
+  top_apr: number;
+  asset_classes: string[];
+  protocol_url: string | null;
+};
+
+/**
+ * Aggregate cached pools by curated protocol.
+ * Returns ProtocolSummary[] sorted by TVL descending.
+ */
+export async function queryProtocols(): Promise<{ protocols: ProtocolSummary[]; total: number }> {
+  await ensureCachePopulated();
+  const allPools = getCachedPools();
+
+  const protocols: ProtocolSummary[] = [];
+
+  for (const cp of CURATED_PROTOCOLS) {
+    const slugSet = new Set(cp.slugs);
+    const pools = allPools.filter(p => slugSet.has(p.protocol));
+
+    const chains = [...new Set(pools.map(p => p.chain))];
+    const assetClasses = [...new Set(pools.map(p => p.exposure.asset_class).filter((ac): ac is string => ac !== null))];
+    const totalTvl = pools.reduce((sum, p) => sum + p.tvl_usd, 0);
+    const topApr = pools.length > 0 ? Math.max(...pools.map(p => p.yield.apr_total)) : 0;
+
+    // TVL-weighted average APR
+    let avgApr = 0;
+    if (totalTvl > 0) {
+      const weightedSum = pools.reduce((sum, p) => sum + p.yield.apr_total * p.tvl_usd, 0);
+      avgApr = weightedSum / totalTvl;
+    }
+
+    protocols.push({
+      id: cp.id,
+      name: cp.name,
+      type: cp.type,
+      color: cp.color,
+      pool_count: pools.length,
+      chains,
+      total_tvl_usd: totalTvl,
+      avg_apr: Math.round(avgApr * 100) / 100,
+      top_apr: Math.round(topApr * 100) / 100,
+      asset_classes: assetClasses,
+      protocol_url: PROTOCOL_APP_URLS[cp.slugs[0]] ?? null,
+    });
+  }
+
+  // Sort by TVL descending
+  protocols.sort((a, b) => b.total_tvl_usd - a.total_tvl_usd);
+
+  return { protocols, total: protocols.length };
 }

@@ -5,22 +5,7 @@ import { SimulationTooltip } from "./SimulationTooltip";
 import { StabilityBadge } from "./StabilityBadge";
 import { ShareButton } from "./ShareButton";
 import { SortHeader } from "./SortHeader";
-
-const CHAIN_COLORS: Record<string, string> = {
-  ethereum: "bg-blue-500",
-  arbitrum: "bg-sky-400",
-  base: "bg-blue-600",
-};
-
-function ChainDot({ chain }: { chain: string }) {
-  return (
-    <span
-      className={`inline-block h-2.5 w-2.5 rounded-full ${CHAIN_COLORS[chain] ?? "bg-gray-400 dark:bg-zinc-500"}`}
-      title={chain.charAt(0).toUpperCase() + chain.slice(1)}
-      aria-label={chain.charAt(0).toUpperCase() + chain.slice(1)}
-    />
-  );
-}
+import { ChainDot } from "./ChainDot";
 
 export function PoolTable({ data }: { data: PaginatedResponse<PoolListItem> }) {
   const pools = data.data;
@@ -95,6 +80,9 @@ export function PoolTable({ data }: { data: PaginatedResponse<PoolListItem> }) {
                 <div className="relative group/apr">
                   <div className="font-[family-name:var(--font-geist-mono)] text-emerald-600 dark:text-emerald-400 font-medium cursor-default">
                     {formatApr(pool.yield.apr_total)}
+                    {pool.yield.is_estimated && (
+                      <span className="ml-1 text-[10px] text-amber-500" title="7-day average unavailable — rate may reflect a temporary spike">~</span>
+                    )}
                   </div>
                   {(pool.yield.apr_base !== null || pool.yield.apr_reward !== null) && (
                     <div className="absolute hidden group-hover/apr:block bottom-full right-0 mb-1.5 z-20 w-44 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-lg text-left text-xs" role="tooltip">

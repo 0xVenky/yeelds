@@ -17,6 +17,7 @@ const DISCOVER_ITEMS: NavItem[] = [
     label: "All Yields",
     param: {},
   },
+  { label: "Projects", href: "/projects" },
   {
     label: "Stablecoins",
     href: "/stables",

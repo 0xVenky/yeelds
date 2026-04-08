@@ -25,6 +25,7 @@ export type PoolListItem = {
     apr_reward: number | null;
     apr_base_7d: number | null;
     il_7d: number | null;
+    is_estimated: boolean;
   };
   exposure: {
     type: string;

@@ -18,6 +18,7 @@ function makePool(overrides: Partial<PoolListItem> & { id: string }): PoolListIt
       apr_reward: overrides.yield?.apr_reward ?? 0,
       apr_base_7d: null,
       il_7d: null,
+      is_estimated: true,
     },
     exposure: {
       type: "single",
@@ -64,8 +65,8 @@ describe("computeBenchmarks", () => {
 
   it("computes TVL-weighted average APR for usd_stable", () => {
     const pools = [
-      makePool({ id: "a", tvl_usd: 10_000_000, yield: { apr_total: 4, apr_base: 4, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
-      makePool({ id: "b", tvl_usd: 5_000_000, yield: { apr_total: 10, apr_base: 10, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
+      makePool({ id: "a", tvl_usd: 10_000_000, yield: { apr_total: 4, apr_base: 4, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
+      makePool({ id: "b", tvl_usd: 5_000_000, yield: { apr_total: 10, apr_base: 10, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
     ];
 
     const result = computeBenchmarks(pools);
@@ -77,8 +78,8 @@ describe("computeBenchmarks", () => {
 
   it("excludes pools with TVL below $1M", () => {
     const pools = [
-      makePool({ id: "big", tvl_usd: 5_000_000, yield: { apr_total: 3, apr_base: 3, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
-      makePool({ id: "small", tvl_usd: 500_000, yield: { apr_total: 50, apr_base: 50, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
+      makePool({ id: "big", tvl_usd: 5_000_000, yield: { apr_total: 3, apr_base: 3, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
+      makePool({ id: "small", tvl_usd: 500_000, yield: { apr_total: 50, apr_base: 50, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
     ];
 
     const result = computeBenchmarks(pools);
@@ -92,7 +93,7 @@ describe("computeBenchmarks", () => {
       makePool({
         id: `pool-${i}`,
         tvl_usd: (12 - i) * 1_000_000, // 12M, 11M, ..., 1M
-        yield: { apr_total: 5, apr_base: 5, apr_reward: 0, apr_base_7d: null, il_7d: null },
+        yield: { apr_total: 5, apr_base: 5, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true },
       }),
     );
 
@@ -119,9 +120,9 @@ describe("computeBenchmarks", () => {
 
   it("computes APR range across all qualifying pools", () => {
     const pools = [
-      makePool({ id: "low", tvl_usd: 2_000_000, yield: { apr_total: 1.5, apr_base: 1.5, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
-      makePool({ id: "mid", tvl_usd: 5_000_000, yield: { apr_total: 5, apr_base: 5, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
-      makePool({ id: "high", tvl_usd: 3_000_000, yield: { apr_total: 12.3, apr_base: 12.3, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
+      makePool({ id: "low", tvl_usd: 2_000_000, yield: { apr_total: 1.5, apr_base: 1.5, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
+      makePool({ id: "mid", tvl_usd: 5_000_000, yield: { apr_total: 5, apr_base: 5, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
+      makePool({ id: "high", tvl_usd: 3_000_000, yield: { apr_total: 12.3, apr_base: 12.3, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
     ];
 
     const result = computeBenchmarks(pools);
@@ -137,14 +138,14 @@ describe("computeBenchmarks", () => {
         tvl_usd: 5_000_000,
         yield_source: "rwa_yield",
         exposure: { type: "single", category: "stablecoin", asset_class: "usd_stable", has_yield_bearing_token: false, underlying_tokens: [] },
-        yield: { apr_total: 4, apr_base: 4, apr_reward: 0, apr_base_7d: null, il_7d: null },
+        yield: { apr_total: 4, apr_base: 4, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true },
       }),
       // Regular USD pool
       makePool({
         id: "usd-1",
         tvl_usd: 3_000_000,
         yield_source: "lending_interest",
-        yield: { apr_total: 6, apr_base: 6, apr_reward: 0, apr_base_7d: null, il_7d: null },
+        yield: { apr_total: 6, apr_base: 6, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true },
       }),
     ];
 
@@ -172,8 +173,8 @@ describe("computeBenchmarks", () => {
 
   it("rounds benchmark_apr to 2 decimal places", () => {
     const pools = [
-      makePool({ id: "a", tvl_usd: 7_000_000, yield: { apr_total: 3.33333, apr_base: 3.33333, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
-      makePool({ id: "b", tvl_usd: 3_000_000, yield: { apr_total: 6.66666, apr_base: 6.66666, apr_reward: 0, apr_base_7d: null, il_7d: null } }),
+      makePool({ id: "a", tvl_usd: 7_000_000, yield: { apr_total: 3.33333, apr_base: 3.33333, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
+      makePool({ id: "b", tvl_usd: 3_000_000, yield: { apr_total: 6.66666, apr_base: 6.66666, apr_reward: 0, apr_base_7d: null, il_7d: null, is_estimated: true } }),
     ];
 
     const result = computeBenchmarks(pools);

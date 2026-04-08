@@ -120,10 +120,13 @@ export function normalizeDefiLlamaPool(raw: DefiLlamaPool): PoolListItem {
     throw new Error(`Unknown chain: ${raw.chain}`);
   }
 
-  const aprTotal = apyToApr(raw.apy ?? 0);
   const aprBase = raw.apyBase != null ? apyToApr(raw.apyBase) : null;
   const aprReward = raw.apyReward != null ? apyToApr(raw.apyReward) : null;
   const aprBase7d = raw.apyBase7d != null ? apyToApr(raw.apyBase7d) : null;
+  // Prefer 7-day avg base APR for apr_total — spot rate can be wildly inflated from short-term spikes
+  const bestBase = aprBase7d ?? aprBase ?? 0;
+  const aprTotal = bestBase + (aprReward ?? 0);
+  const isEstimated = aprBase7d === null;
   const underlyingTokens = resolveTokens(raw.underlyingTokens, chain);
   const poolType = inferPoolType(raw.project, raw.poolMeta);
 
@@ -142,6 +145,7 @@ export function normalizeDefiLlamaPool(raw: DefiLlamaPool): PoolListItem {
       apr_reward: aprReward,
       apr_base_7d: aprBase7d,
       il_7d: raw.il7d,
+      is_estimated: isEstimated,
     },
     exposure: {
       type: mapExposureType(raw.exposure),

@@ -10,9 +10,15 @@ export function YieldCard({ pool }: { pool: PoolDetail }) {
       <h2 className="text-sm font-medium text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-4">
         Yield Breakdown
       </h2>
-      <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-emerald-600 dark:text-emerald-400 mb-4">
+      <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-emerald-600 dark:text-emerald-400 mb-1">
         {formatApr(y.apr_total)}
       </div>
+      {y.is_estimated && (
+        <p className="text-xs text-amber-500 mb-4">
+          7-day average unavailable — rate may reflect a temporary spike
+        </p>
+      )}
+      {!y.is_estimated && <div className="mb-4" />}
 
       {/* APR breakdown bar */}
       <div className="mb-4">

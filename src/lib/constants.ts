@@ -76,6 +76,29 @@ export const PROTOCOL_APP_URLS: Record<string, string> = {
   "frankencoin": "https://app.frankencoin.com",
 };
 
+// Curated protocols for /projects page — add new protocols here
+export type CuratedProtocol = {
+  id: string;
+  name: string;
+  slugs: string[];   // DeFi Llama project names to aggregate
+  type: string;      // primary category
+  color: string;     // Tailwind bg class for avatar
+};
+
+export const CURATED_PROTOCOLS: CuratedProtocol[] = [
+  { id: "uniswap", name: "Uniswap", slugs: ["uniswap-v2", "uniswap-v3", "uniswap-v4"], type: "dex", color: "bg-pink-500" },
+  { id: "curve", name: "Curve", slugs: ["curve-dex"], type: "dex", color: "bg-red-500" },
+  { id: "aave", name: "Aave", slugs: ["aave-v3"], type: "lending", color: "bg-purple-500" },
+  { id: "morpho", name: "Morpho", slugs: ["morpho-v1"], type: "vault", color: "bg-blue-500" },
+  { id: "beefy", name: "Beefy", slugs: ["beefy"], type: "vault", color: "bg-green-500" },
+  { id: "aerodrome", name: "Aerodrome", slugs: ["aerodrome-v1", "aerodrome-slipstream"], type: "dex", color: "bg-sky-500" },
+  { id: "stake-dao", name: "Stake DAO", slugs: ["stake-dao"], type: "vault", color: "bg-indigo-500" },
+  { id: "convex", name: "Convex", slugs: ["convex-finance"], type: "vault", color: "bg-yellow-500" },
+  { id: "fluid", name: "Fluid", slugs: ["fluid-lending", "fluid-dex"], type: "lending", color: "bg-cyan-500" },
+  { id: "compound", name: "Compound", slugs: ["compound-v3"], type: "lending", color: "bg-emerald-500" },
+  { id: "pendle", name: "Pendle", slugs: ["pendle"], type: "dex", color: "bg-violet-500" },
+];
+
 // Protocols whose yield derives from real-world assets (overrides pool-type inference)
 // Slugs verified against DeFi Llama pool data 2026-04-03
 export const RWA_PROTOCOLS = [
