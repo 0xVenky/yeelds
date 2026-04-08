@@ -1,6 +1,8 @@
-import { ensureCachePopulated, getCachedPools, getCachedBenchmarks, getLastRefreshed } from "@/lib/pipeline/cache";
+import { ensureCachePopulated, getCachedPools, getCachedBenchmarks, getLastRefreshed, getMorphoVaultData, getUpshiftVaultData } from "@/lib/pipeline/cache";
 import { filterPools, applyDiscoveryMode, sortPools, paginatePools } from "@/lib/api/pool-query";
 import type { PoolListItem, PoolDetail, PaginatedResponse, StatsResponse, BenchmarksResponse } from "@/lib/types";
+import { ensureDealsPopulated, getDeals } from "@/lib/deals/store";
+import type { Deal } from "@/lib/deals/types";
 
 type QueryParams = {
   [key: string]: string | undefined;
@@ -79,6 +81,8 @@ export async function queryPoolById(id: string): Promise<PoolDetail | null> {
       underlying_depeg_risk: pool.risk.underlying_depeg_risk,
       notes: null,
     },
+    morpho_vault: getMorphoVaultData(pool.id),
+    upshift_vault: getUpshiftVaultData(pool.id),
   };
 }
 
@@ -111,4 +115,14 @@ export async function queryBenchmarks(): Promise<BenchmarksResponse> {
     benchmarks: getCachedBenchmarks(),
     last_refreshed: getLastRefreshed()?.toISOString() ?? null,
   };
+}
+
+/**
+ * Get curated LP deals from the in-memory store.
+ * Used by the /deals page server component — no HTTP self-fetch.
+ */
+export function queryDeals(): { deals: Deal[]; total: number } {
+  ensureDealsPopulated();
+  const deals = getDeals();
+  return { deals, total: deals.length };
 }

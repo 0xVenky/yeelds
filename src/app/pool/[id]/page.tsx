@@ -6,6 +6,8 @@ import { RiskCard } from "@/components/pool-detail/RiskCard";
 import { ExposureCard } from "@/components/pool-detail/ExposureCard";
 import { SimulationCard } from "@/components/pool-detail/SimulationCard";
 import { CampaignList } from "@/components/pool-detail/CampaignList";
+import { VaultAllocationCard } from "@/components/pool-detail/VaultAllocationCard";
+import { VaultInfoCard } from "@/components/pool-detail/VaultInfoCard";
 import { RiskBadges } from "@/components/RiskBadges";
 import { queryPoolById } from "@/lib/api/query";
 
@@ -78,6 +80,12 @@ export default async function PoolDetailPage({
       </div>
       <div className="space-y-4">
         <ExposureCard pool={pool} />
+        {pool.morpho_vault && (
+          <VaultAllocationCard data={pool.morpho_vault} />
+        )}
+        {pool.upshift_vault && (
+          <VaultInfoCard data={pool.upshift_vault} />
+        )}
         <SimulationCard pool={pool} />
         <CampaignList campaigns={pool.incentive_campaigns} />
       </div>

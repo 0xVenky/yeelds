@@ -2,6 +2,8 @@ import type { PoolListItem, AssetClassBenchmark } from "@/lib/types";
 import { fetchDefiLlamaPools } from "@/lib/pipeline/fetchers/defillama";
 import { normalizeDefiLlamaPool } from "@/lib/pipeline/normalizers/normalize";
 import { enrichPoolsWithRisk } from "@/lib/pipeline/enrichers/block-explorer";
+import { enrichMorphoVaults, getMorphoVaultData as getMorphoData } from "@/lib/pipeline/enrichers/morpho";
+import { enrichUpshiftVaults, getUpshiftVaultData as getUpshiftData } from "@/lib/pipeline/enrichers/upshift";
 import { computeBenchmarks } from "@/lib/pipeline/benchmarks";
 import { refreshFeed } from "@/lib/feed/store";
 
@@ -65,6 +67,14 @@ export async function refreshCache(): Promise<{ count: number; errors: string[] 
       console.warn(`Background risk enrichment failed: ${(e as Error).message}`);
     });
 
+    // Enrich vaults with protocol-specific data in background
+    enrichMorphoVaults(normalized).catch((e) => {
+      console.warn(`Background Morpho enrichment failed: ${(e as Error).message}`);
+    });
+    enrichUpshiftVaults(normalized).catch((e) => {
+      console.warn(`Background Upshift enrichment failed: ${(e as Error).message}`);
+    });
+
     // Refresh RSS feed in background (don't block page render)
     refreshFeed().catch((e) => {
       console.warn(`Background feed refresh failed: ${(e as Error).message}`);
@@ -75,6 +85,9 @@ export async function refreshCache(): Promise<{ count: number; errors: string[] 
     isRefreshing = false;
   }
 }
+
+export { getMorphoData as getMorphoVaultData };
+export { getUpshiftData as getUpshiftVaultData };
 
 export async function ensureCachePopulated(): Promise<void> {
   if (cachedPools.length === 0 && !isRefreshing) {

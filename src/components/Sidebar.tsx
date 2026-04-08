@@ -39,7 +39,7 @@ const RESEARCH_ITEMS: NavItem[] = [
 ];
 
 const DEALS_ITEMS: NavItem[] = [
-  { label: "Liquidity Deals", disabled: true },
+  { label: "Liquidity Deals", href: "/deals" },
 ];
 
 const PRESET_ITEMS: NavItem[] = [
@@ -207,21 +207,6 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom CTA */}
-      <div className="px-3 pb-4 mt-auto">
-        <a
-          href="https://metrom.xyz"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900 p-3 text-xs text-gray-500 dark:text-zinc-500 hover:border-gray-300 dark:hover:border-zinc-700 transition-colors"
-        >
-          <p className="font-medium text-gray-700 dark:text-zinc-300 mb-1">
-            Want your protocol listed or boosted here?
-          </p>
-          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-            Boost with Metrom &rarr;
-          </span>
-        </a>
-      </div>
     </div>
   );
 

@@ -53,10 +53,45 @@ export type PoolListItem = {
   };
 };
 
+// Morpho vault allocation breakdown
+export type VaultAllocation = {
+  loan_asset: { address: string; symbol: string };
+  collateral_asset: { address: string; symbol: string } | null;
+  lltv: number | null;
+  supply_usd: number;
+  allocation_pct: number;
+  supply_apy: number;
+};
+
+export type MorphoVaultData = {
+  vault_address: string;
+  vault_name: string;
+  deposit_asset: { address: string; symbol: string; name: string };
+  total_assets_usd: number;
+  net_apy: number;
+  net_apy_excluding_rewards: number;
+  fee_pct: number;
+  allocations: VaultAllocation[];
+};
+
+// Upshift vault detail
+export type UpshiftVaultData = {
+  vault_address: string;
+  vault_name: string;
+  vault_type: string;
+  receipt_token_symbol: string;
+  apy_total: number;
+  apy_underlying: number;
+  fee_bps: number;
+  launch_date: string | null;
+};
+
 // Pool detail — GET /api/v1/pools/:id
 export type PoolDetail = PoolListItem & {
   incentive_campaigns: CampaignDetail[];
   risk_detail: RiskDetail;
+  morpho_vault: MorphoVaultData | null;
+  upshift_vault: UpshiftVaultData | null;
 };
 
 export type CampaignDetail = {

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ensureCachePopulated, getCachedPools } from "@/lib/pipeline/cache";
+import { ensureCachePopulated, getCachedPools, getMorphoVaultData, getUpshiftVaultData } from "@/lib/pipeline/cache";
 import type { PoolDetail } from "@/lib/types";
 
 export async function GET(
@@ -30,6 +30,8 @@ export async function GET(
       underlying_depeg_risk: pool.risk.underlying_depeg_risk,
       notes: null,
     },
+    morpho_vault: getMorphoVaultData(pool.id),
+    upshift_vault: getUpshiftVaultData(pool.id),
   };
 
   return NextResponse.json(detail);
