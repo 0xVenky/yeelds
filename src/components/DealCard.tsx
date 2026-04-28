@@ -17,14 +17,14 @@ const SOURCE_LABELS: Record<DealSource, string> = {
   other: "Curated",
 };
 
-import { ChainDot } from "./ChainDot";
+import { ChainBadge, ChainDot } from "./ChainDot";
 
 export function DealCard({ deal }: { deal: Deal }) {
   const status = STATUS_CONFIG[deal.status];
 
   return (
     <article
-      className={`rounded-xl border ${status.border} bg-[var(--bg-secondary)] p-5 flex flex-col gap-4 ${status.opacity}`}
+      className={`rounded-xl border ${status.border} bg-[var(--bg-secondary)] p-5 flex flex-col gap-4 ${status.opacity} hover:scale-[1.02] transition-all duration-300`}
       aria-label={`${deal.title} — ${status.label}`}
     >
       {/* ZONE 1: Identity */}
@@ -47,10 +47,21 @@ export function DealCard({ deal }: { deal: Deal }) {
             {deal.description}
           </p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0 pt-1">
-          {deal.chains.map((chain) => (
-            <ChainDot key={chain} chain={chain} />
-          ))}
+        <div
+          className="flex items-center gap-1.5 shrink-0 pt-1 flex-wrap"
+          role={deal.chains.length > 1 ? "group" : undefined}
+          aria-label={deal.chains.length > 1 ? `Cross-chain: ${deal.chains.join(", ")}` : undefined}
+        >
+          {deal.chains.length > 1 ? (
+            <>
+              <span style={{ color: "#d97706" }} aria-hidden="true">⚡</span>
+              {deal.chains.map((chain) => (
+                <ChainDot key={chain} chain={chain} />
+              ))}
+            </>
+          ) : (
+            <ChainBadge chain={deal.chains[0]} />
+          )}
         </div>
       </div>
 

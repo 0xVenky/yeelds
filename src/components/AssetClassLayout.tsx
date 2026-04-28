@@ -37,14 +37,19 @@ export async function AssetClassLayout({
   return (
     <div className="flex-1 flex flex-col">
       {/* Asset class header */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-zinc-800/50">
+      <div className="flex items-center justify-between px-6 sm:px-8 py-6">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">{title}</h1>
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+          <h1
+            className="text-2xl font-bold font-[family-name:var(--font-manrope)] tracking-tight"
+            style={{ color: "var(--on-surface)" }}
+          >
+            {title}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--on-surface-variant)" }}>
             {description}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-zinc-500">
+        <div className="flex items-center gap-3 text-xs" style={{ color: "var(--outline)" }}>
           <span>{pools.pagination.total} pools</span>
           <span aria-hidden="true">&middot;</span>
           <span>

@@ -6,8 +6,9 @@ type BaseFeedItem = {
   published_at: string; // ISO date
 };
 
-export type TweetItem = BaseFeedItem & {
+type TweetTextItem = BaseFeedItem & {
   type: "tweet";
+  render_mode?: "text";
   author_name: string;
   author_handle: string;
   author_avatar?: string;
@@ -16,6 +17,14 @@ export type TweetItem = BaseFeedItem & {
   retweets: number;
   url: string;
 };
+
+type TweetEmbedItem = BaseFeedItem & {
+  type: "tweet";
+  render_mode: "embed";
+  url: string;
+};
+
+export type TweetItem = TweetTextItem | TweetEmbedItem;
 
 export type ArticleItem = BaseFeedItem & {
   type: "article";

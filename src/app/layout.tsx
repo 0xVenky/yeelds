@@ -1,24 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "Yeelds — DeFi Yield Discovery",
   description: "Discover and compare yield opportunities across EVM chains.",
+  icons: { icon: "/favicon.ico" },
 };
+
+// Material Symbols for sidebar icons - loaded via link tag below
 
 export default function RootLayout({
   children,
@@ -28,12 +31,21 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white dark:bg-zinc-950 text-gray-900 dark:text-zinc-100">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body
+        className="min-h-full flex flex-col font-[family-name:var(--font-inter)]"
+        style={{ backgroundColor: "var(--surface)", color: "var(--on-surface)" }}
+      >
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{if(localStorage.getItem('yeelds_theme')==='light')document.documentElement.classList.remove('dark')}catch(e){}`,
+            __html: `try{if(localStorage.getItem('yeelds_theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}`,
           }}
         />
         <DisclaimerBanner />

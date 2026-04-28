@@ -1,9 +1,10 @@
 import type { PoolListItem, AssetClassBenchmark } from "@/lib/types";
-import { fetchDefiLlamaPools } from "@/lib/pipeline/fetchers/defillama";
-import { normalizeDefiLlamaPool } from "@/lib/pipeline/normalizers/normalize";
+import { fetchAllVaults } from "@/lib/pipeline/fetchers/lifi";
+import { normalizeLifiVaults } from "@/lib/pipeline/normalizers/lifi-normalize";
 import { enrichPoolsWithRisk } from "@/lib/pipeline/enrichers/block-explorer";
 import { enrichMorphoVaults, getMorphoVaultData as getMorphoData } from "@/lib/pipeline/enrichers/morpho";
 import { enrichUpshiftVaults, getUpshiftVaultData as getUpshiftData } from "@/lib/pipeline/enrichers/upshift";
+import { enrichWithDefiLlamaRewards } from "@/lib/pipeline/enrichers/defillama-rewards";
 import { computeBenchmarks } from "@/lib/pipeline/benchmarks";
 import { refreshFeed } from "@/lib/feed/store";
 
@@ -31,35 +32,36 @@ export async function refreshCache(): Promise<{ count: number; errors: string[] 
   const errors: string[] = [];
 
   try {
-    let rawPools: Awaited<ReturnType<typeof fetchDefiLlamaPools>>;
+    let rawVaults: Awaited<ReturnType<typeof fetchAllVaults>>;
     try {
-      rawPools = await fetchDefiLlamaPools();
+      rawVaults = await fetchAllVaults();
     } catch (e) {
-      const msg = `DeFi Llama fetch failed: ${(e as Error).message}`;
+      const msg = `LI.FI fetch failed: ${(e as Error).message}`;
       console.error(msg);
       errors.push(msg);
-      // Fall back to stale cache — stale-but-correct > crash
+      // Stale cache beats empty cache — keep whatever we had.
       return { count: cachedPools.length, errors };
     }
 
-    const normalized: PoolListItem[] = [];
+    const normalized = normalizeLifiVaults(rawVaults);
 
-    for (const raw of rawPools) {
-      try {
-        normalized.push(normalizeDefiLlamaPool(raw));
-      } catch (e) {
-        errors.push(`Normalize failed for ${raw.pool}: ${(e as Error).message}`);
-      }
+    // If the fetcher returned HTTP 200 but zero vaults (upstream shape change,
+    // filter regression, outage behind a 200) we must not overwrite a
+    // populated cache with nothing. Stale-but-correct > fresh-and-empty.
+    if (normalized.length === 0 && cachedPools.length > 0) {
+      const msg = `LI.FI returned 0 vaults; preserving stale cache (${cachedPools.length} pools)`;
+      console.warn(msg);
+      errors.push(msg);
+      return { count: cachedPools.length, errors };
     }
 
-    // Set cache immediately so pages can render with data
     cachedPools = normalized;
     cachedBenchmarks = computeBenchmarks(normalized);
     lastRefreshed = new Date();
 
     console.log(`Cache refreshed: ${normalized.length} pools, ${errors.length} errors`);
 
-    // Enrich top 100 pools with risk signals in background (don't block page render)
+    // Background enrichment — all fire-and-forget, isolated failures.
     const top100 = [...normalized]
       .sort((a, b) => b.tvl_usd - a.tvl_usd)
       .slice(0, 100);
@@ -67,7 +69,6 @@ export async function refreshCache(): Promise<{ count: number; errors: string[] 
       console.warn(`Background risk enrichment failed: ${(e as Error).message}`);
     });
 
-    // Enrich vaults with protocol-specific data in background
     enrichMorphoVaults(normalized).catch((e) => {
       console.warn(`Background Morpho enrichment failed: ${(e as Error).message}`);
     });
@@ -75,7 +76,11 @@ export async function refreshCache(): Promise<{ count: number; errors: string[] 
       console.warn(`Background Upshift enrichment failed: ${(e as Error).message}`);
     });
 
-    // Refresh RSS feed in background (don't block page render)
+    // DeFi Llama reward-token enricher (Decision 20 — DL is now an enricher).
+    enrichWithDefiLlamaRewards(normalized).catch((e) => {
+      console.warn(`Background DeFi Llama reward enrichment failed: ${(e as Error).message}`);
+    });
+
     refreshFeed().catch((e) => {
       console.warn(`Background feed refresh failed: ${(e as Error).message}`);
     });

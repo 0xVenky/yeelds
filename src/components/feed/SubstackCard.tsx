@@ -3,7 +3,7 @@ import { formatRelativeTime } from "@/lib/feed/utils";
 
 export function SubstackCard({ item }: { item: SubstackItem }) {
   return (
-    <div className="border-l-4 border-emerald-500 rounded-lg bg-[var(--bg-secondary)] p-4">
+    <div className="border-l-4 border-emerald-500 rounded-lg bg-[var(--bg-secondary)] p-4 hover:scale-[1.02] transition-all duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">

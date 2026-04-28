@@ -1,16 +1,16 @@
 import type { PoolDetail } from "@/lib/types";
-import { formatApr, formatYieldSource } from "@/lib/utils";
+import { formatApr } from "@/lib/utils";
 import { YieldBreakdownExpanded } from "@/components/YieldBreakdown";
 
 export function YieldCard({ pool }: { pool: PoolDetail }) {
   const { yield: y } = pool;
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-5">
-      <h2 className="text-sm font-medium text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-4">
+    <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--surface-container-lowest)" }}>
+      <h2 className="text-sm font-medium font-[family-name:var(--font-manrope)] uppercase tracking-wider mb-4" style={{ color: "var(--outline)" }}>
         Yield Breakdown
       </h2>
-      <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-emerald-600 dark:text-emerald-400 mb-1">
+      <div className="text-3xl font-bold tabular-nums mb-1" style={{ color: "var(--secondary)" }}>
         {formatApr(y.apr_total)}
       </div>
       {y.is_estimated && (
@@ -25,24 +25,19 @@ export function YieldCard({ pool }: { pool: PoolDetail }) {
         <YieldBreakdownExpanded yield={{ ...y, yieldSource: pool.yield_source }} />
       </div>
 
-      <dl className="space-y-2 text-sm">
-        {y.apr_base_7d !== null && (
+      {/* Headline apr_total is already the 7-day-smoothed total when available
+          (Decision 23). The previous "7d Avg {source}" row was redundant with
+          the headline and mislabeled the total-windowed value as base-only. */}
+      {y.il_7d !== null && (
+        <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-gray-500 dark:text-zinc-400">7d Avg {formatYieldSource(pool.yield_source)}</dt>
-            <dd className="font-[family-name:var(--font-geist-mono)] text-gray-700 dark:text-zinc-300">
-              {formatApr(y.apr_base_7d)}
-            </dd>
-          </div>
-        )}
-        {y.il_7d !== null && (
-          <div className="flex justify-between">
-            <dt className="text-gray-500 dark:text-zinc-400">IL 7d</dt>
-            <dd className="font-[family-name:var(--font-geist-mono)] text-red-500 dark:text-red-400/70">
+            <dt style={{ color: "var(--on-surface-variant)" }}>IL 7d</dt>
+            <dd className="tabular-nums font-medium" style={{ color: "var(--error, #ef4444)" }}>
               {formatApr(y.il_7d)}
             </dd>
           </div>
-        )}
-      </dl>
+        </dl>
+      )}
     </div>
   );
 }

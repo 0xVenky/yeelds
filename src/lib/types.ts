@@ -23,7 +23,7 @@ export type PoolListItem = {
     apr_total: number;
     apr_base: number | null;
     apr_reward: number | null;
-    apr_base_7d: number | null;
+    apr_total_7d: number | null;
     il_7d: number | null;
     is_estimated: boolean;
   };
@@ -46,12 +46,17 @@ export type PoolListItem = {
     nearest_expiry_days: number | null;
     total_daily_rewards_usd: number | null;
     sources: string[];
+    reward_token_symbols?: string[];
   };
   simulation: {
     daily_earnings_per_1k: number;
     monthly_earnings_per_1k: number;
     yearly_earnings_per_1k: number;
   };
+  vault_address: string;
+  vault_chain_id: number;
+  is_transactional: boolean;
+  is_redeemable: boolean;
 };
 
 // Morpho vault allocation breakdown

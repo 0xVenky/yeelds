@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatYieldSource, formatPoolType, formatApr, formatTvl, apyToApr } from "./utils";
+import { formatYieldSource, formatPoolType, formatApr, formatTvl } from "./utils";
 
 describe("formatYieldSource", () => {
   it("maps known yield source slugs to display labels", () => {
@@ -59,20 +59,3 @@ describe("formatTvl", () => {
   });
 });
 
-describe("apyToApr", () => {
-  it("returns 0 for 0 APY", () => {
-    expect(apyToApr(0)).toBe(0);
-  });
-
-  it("converts APY to APR (APR < APY for positive values)", () => {
-    const apr = apyToApr(10);
-    expect(apr).toBeGreaterThan(0);
-    expect(apr).toBeLessThan(10);
-  });
-
-  it("is roughly equal for small values", () => {
-    // For small APY, APR ≈ APY
-    const apr = apyToApr(1);
-    expect(apr).toBeCloseTo(1, 1);
-  });
-});

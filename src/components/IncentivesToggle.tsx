@@ -16,17 +16,24 @@ export function IncentivesToggle() {
     }
     params.delete("page");
     const qs = params.toString();
-    router.push(qs ? `/?${qs}` : "/");
+    router.push(qs ? `/explore?${qs}` : "/explore");
   }
 
   return (
     <button
       onClick={toggle}
-      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+      className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-all"
+      style={
         active
-          ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-          : "bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 border border-gray-200 dark:border-zinc-700 hover:text-gray-700 dark:hover:text-zinc-300"
-      }`}
+          ? {
+              background: "linear-gradient(135deg, var(--secondary), #2ee0ad)",
+              color: "var(--on-secondary)",
+            }
+          : {
+              backgroundColor: "var(--surface-container-high)",
+              color: "var(--on-surface-variant)",
+            }
+      }
       aria-pressed={active}
     >
       Has incentives

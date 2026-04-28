@@ -5,19 +5,22 @@ export function VaultInfoCard({ data }: { data: UpshiftVaultData }) {
   const strategyApy = data.apy_total - data.apy_underlying;
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 p-5">
-      <h2 className="text-sm font-medium text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-4">
+    <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--surface-container-lowest)" }}>
+      <h2 className="text-sm font-medium font-[family-name:var(--font-manrope)] uppercase tracking-wider mb-4" style={{ color: "var(--outline)" }}>
         Vault Details
       </h2>
 
       <div className="space-y-2 text-sm">
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 dark:text-zinc-400">Vault:</span>
-          <span className="text-gray-800 dark:text-zinc-200">{data.vault_name}</span>
+          <span style={{ color: "var(--on-surface-variant)" }}>Vault:</span>
+          <span style={{ color: "var(--on-surface)" }}>{data.vault_name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 dark:text-zinc-400">Type:</span>
-          <span className="rounded bg-gray-200 dark:bg-zinc-700 px-1.5 py-0.5 text-xs font-medium text-gray-600 dark:text-zinc-300">
+          <span style={{ color: "var(--on-surface-variant)" }}>Type:</span>
+          <span
+            className="rounded-lg px-1.5 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: "var(--surface-container-high)", color: "var(--on-surface)" }}
+          >
             {data.vault_type}
           </span>
         </div>
@@ -25,11 +28,11 @@ export function VaultInfoCard({ data }: { data: UpshiftVaultData }) {
         {/* APY breakdown */}
         {data.apy_total > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-gray-500 dark:text-zinc-400">Reported APY:</span>
-            <span className="text-gray-800 dark:text-zinc-200">
+            <span style={{ color: "var(--on-surface-variant)" }}>Reported APY:</span>
+            <span style={{ color: "var(--on-surface)" }}>
               {data.apy_total.toFixed(2)}%
               {hasUnderlying && (
-                <span className="text-gray-400 dark:text-zinc-500 ml-1">
+                <span className="ml-1" style={{ color: "var(--outline)" }}>
                   ({data.apy_underlying.toFixed(2)}% organic + {strategyApy.toFixed(2)}% strategy)
                 </span>
               )}
@@ -39,15 +42,15 @@ export function VaultInfoCard({ data }: { data: UpshiftVaultData }) {
 
         {data.fee_bps > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-gray-500 dark:text-zinc-400">Performance fee:</span>
-            <span className="text-gray-800 dark:text-zinc-200">{data.fee_bps} bps weekly</span>
+            <span style={{ color: "var(--on-surface-variant)" }}>Performance fee:</span>
+            <span style={{ color: "var(--on-surface)" }}>{data.fee_bps} bps weekly</span>
           </div>
         )}
 
         {data.launch_date && (
           <div className="flex items-center gap-2">
-            <span className="text-gray-500 dark:text-zinc-400">Launched:</span>
-            <span className="text-gray-800 dark:text-zinc-200">{data.launch_date}</span>
+            <span style={{ color: "var(--on-surface-variant)" }}>Launched:</span>
+            <span style={{ color: "var(--on-surface)" }}>{data.launch_date}</span>
           </div>
         )}
       </div>

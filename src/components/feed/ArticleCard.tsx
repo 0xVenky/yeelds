@@ -3,7 +3,7 @@ import { formatRelativeTime } from "@/lib/feed/utils";
 
 export function ArticleCard({ item }: { item: ArticleItem }) {
   return (
-    <div className="border-l-4 border-orange-500 rounded-lg bg-[var(--bg-secondary)] p-4">
+    <div className="border-l-4 border-orange-500 rounded-lg bg-[var(--bg-secondary)] p-4 hover:scale-[1.02] transition-all duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-orange-400 font-semibold text-sm">

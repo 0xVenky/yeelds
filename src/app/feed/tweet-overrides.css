@@ -1,0 +1,7 @@
+/* Align react-tweet typography with the app's Inter stack. */
+/* Same specificity as theme.css (.react-tweet-theme, 0,1,0) — */
+/* source order puts this file after theme.css, so it wins. */
+.react-tweet-theme {
+  --tweet-font-family: var(--font-inter), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+}

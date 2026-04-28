@@ -1,5 +1,9 @@
+// As of Decision 20 (2026-04-17), DeFi Llama is an enricher only.
+// Primary pool source is LI.FI Earn (see lifi.ts).
+// This file fetches only for reward-token enrichment.
+
 import { z } from "zod";
-import { DEFILLAMA_CHAIN_MAP, DEFILLAMA_SKIP_PROJECTS, MAX_REASONABLE_APR } from "@/lib/constants";
+import { DEFILLAMA_CHAIN_MAP, DEFILLAMA_SKIP_PROJECTS, MAX_REASONABLE_APY } from "@/lib/constants";
 
 const DefiLlamaPoolSchema = z.object({
   pool: z.string(),
@@ -62,9 +66,9 @@ export async function fetchDefiLlamaPools(): Promise<DefiLlamaPool[]> {
     if (result.success) {
       const pool = result.data;
       // Bounds check: cap suspicious APY to prevent misleading display
-      if (pool.apy !== null && pool.apy > MAX_REASONABLE_APR) {
-        console.warn(`DeFi Llama: capping APY ${pool.apy}% → ${MAX_REASONABLE_APR}% on ${pool.pool} (${pool.project}/${pool.symbol})`);
-        validated.push({ ...pool, apy: MAX_REASONABLE_APR });
+      if (pool.apy !== null && pool.apy > MAX_REASONABLE_APY) {
+        console.warn(`DeFi Llama: capping APY ${pool.apy}% → ${MAX_REASONABLE_APY}% on ${pool.pool} (${pool.project}/${pool.symbol})`);
+        validated.push({ ...pool, apy: MAX_REASONABLE_APY });
       } else {
         validated.push(pool);
       }

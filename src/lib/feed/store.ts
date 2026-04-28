@@ -1,5 +1,6 @@
 import type { FeedItem } from "./types";
 import { fetchAllFeeds } from "./fetcher";
+import { loadCuratedTweets } from "./tweets-loader";
 
 let feedItems: FeedItem[] = [];
 let feedRefreshed = false;
@@ -9,14 +10,18 @@ export function getFeedItems(): FeedItem[] {
   return feedItems;
 }
 
-/**
- * Refresh feed from RSS sources.
- */
 export async function refreshFeed(): Promise<void> {
   try {
-    const { items } = await fetchAllFeeds();
-    if (items.length > 0) {
-      feedItems = items;
+    const [rssResult, tweets] = await Promise.all([
+      fetchAllFeeds(),
+      loadCuratedTweets(),
+    ]);
+    const merged: FeedItem[] = [...rssResult.items, ...tweets].sort(
+      (a, b) =>
+        new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+    );
+    if (merged.length > 0) {
+      feedItems = merged;
       feedRefreshed = true;
     }
   } catch (e) {

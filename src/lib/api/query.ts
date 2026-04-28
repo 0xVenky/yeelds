@@ -3,7 +3,7 @@ import { filterPools, applyDiscoveryMode, sortPools, paginatePools } from "@/lib
 import type { PoolListItem, PoolDetail, PaginatedResponse, StatsResponse, BenchmarksResponse } from "@/lib/types";
 import { ensureDealsPopulated, getDeals } from "@/lib/deals/store";
 import type { Deal } from "@/lib/deals/types";
-import { CURATED_PROTOCOLS, PROTOCOL_APP_URLS } from "@/lib/constants";
+import { CURATED_PROTOCOLS } from "@/lib/constants";
 
 type QueryParams = {
   [key: string]: string | undefined;
@@ -155,8 +155,8 @@ export async function queryProtocols(): Promise<{ protocols: ProtocolSummary[]; 
   const protocols: ProtocolSummary[] = [];
 
   for (const cp of CURATED_PROTOCOLS) {
-    const slugSet = new Set(cp.slugs);
-    const pools = allPools.filter(p => slugSet.has(p.protocol));
+    const nameSet = new Set(cp.lifi_protocol_names);
+    const pools = allPools.filter(p => nameSet.has(p.protocol));
 
     const chains = [...new Set(pools.map(p => p.chain))];
     const assetClasses = [...new Set(pools.map(p => p.exposure.asset_class).filter((ac): ac is string => ac !== null))];
@@ -170,6 +170,9 @@ export async function queryProtocols(): Promise<{ protocols: ProtocolSummary[]; 
       avgApr = weightedSum / totalTvl;
     }
 
+    // LI.FI vaults expose per-vault deep links (e.g. app.morpho.org/.../vault/0x…),
+    // not a protocol landing page. Leave null here; UI links through to /explore
+    // filtered by this protocol, where each vault card carries its own URL.
     protocols.push({
       id: cp.id,
       name: cp.name,
@@ -181,7 +184,7 @@ export async function queryProtocols(): Promise<{ protocols: ProtocolSummary[]; 
       avg_apr: Math.round(avgApr * 100) / 100,
       top_apr: Math.round(topApr * 100) / 100,
       asset_classes: assetClasses,
-      protocol_url: PROTOCOL_APP_URLS[cp.slugs[0]] ?? null,
+      protocol_url: null,
     });
   }
 

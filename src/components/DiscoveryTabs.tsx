@@ -22,23 +22,34 @@ export function DiscoveryTabs() {
     } else {
       params.set("view", key);
     }
-    // Reset to page 1 on tab change
     params.delete("page");
     const qs = params.toString();
-    router.push(qs ? `/?${qs}` : "/");
+    router.push(qs ? `/explore?${qs}` : "/explore");
   }
 
   return (
-    <nav className="flex gap-1 px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-zinc-800 overflow-x-auto" aria-label="Discovery modes">
+    <nav
+      className="flex gap-2 px-6 sm:px-8 py-3 overflow-x-auto hide-scrollbar"
+      aria-label="Discovery modes"
+    >
       {TABS.map((tab) => (
         <button
           key={tab.key}
           onClick={() => selectTab(tab.key)}
-          className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            active === tab.key
-              ? "bg-gray-100 dark:bg-zinc-700 text-gray-900 dark:text-zinc-100"
-              : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
+          className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
+            active === tab.key ? "" : "hover:brightness-[0.95]"
           }`}
+          style={
+            active === tab.key
+              ? {
+                  backgroundColor: "var(--surface-container-lowest)",
+                  color: "var(--on-surface)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                }
+              : {
+                  color: "var(--on-surface-variant)",
+                }
+          }
           aria-current={active === tab.key ? "page" : undefined}
         >
           {tab.label}

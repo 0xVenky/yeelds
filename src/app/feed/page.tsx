@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import "react-tweet/theme.css";
+import "./tweet-overrides.css";
 import Link from "next/link";
 import { getFeedItems, ensureFeedPopulated } from "@/lib/feed/store";
 import { ensureCachePopulated } from "@/lib/pipeline/cache";
@@ -28,28 +30,36 @@ export default async function FeedPage() {
         </p>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] mb-6">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />
-          Posts
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-orange-500" />
-          Articles
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
-          Newsletters
-        </span>
-      </div>
+      {sorted.length === 0 ? (
+        <p className="text-[var(--text-muted)] text-sm text-center py-8">
+          No articles available right now. Check back soon.
+        </p>
+      ) : (
+        <>
+          {/* Legend */}
+          <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] mb-6">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-blue-500" />
+              Posts
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-orange-500" />
+              Articles
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+              Newsletters
+            </span>
+          </div>
 
-      {/* Feed */}
-      <div className="flex flex-col gap-4">
-        {sorted.map((item) => (
-          <FeedItem key={item.id} item={item} />
-        ))}
-      </div>
+          {/* Feed */}
+          <div className="flex flex-col gap-4">
+            {sorted.map((item) => (
+              <FeedItem key={item.id} item={item} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

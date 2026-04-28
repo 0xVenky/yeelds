@@ -14,8 +14,8 @@ const TYPE_LABELS: Record<string, string> = {
 function buildProtocolHref(id: string): string {
   const cp = CURATED_PROTOCOLS.find(p => p.id === id);
   if (!cp) return "/";
-  const slugs = cp.slugs.join(",");
-  return `/?protocol=${slugs}`;
+  const names = cp.lifi_protocol_names.join(",");
+  return `/explore?protocol=${names}`;
 }
 
 export function ProtocolCard({ protocol }: { protocol: ProtocolSummary }) {

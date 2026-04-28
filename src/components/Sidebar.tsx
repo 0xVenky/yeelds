@@ -6,72 +6,36 @@ import { ThemeToggle } from "./ThemeToggle";
 
 type NavItem = {
   label: string;
+  icon?: string;
   param?: Record<string, string>;
   href?: string;
   disabled?: boolean;
-  children?: NavItem[];
 };
 
 const DISCOVER_ITEMS: NavItem[] = [
-  {
-    label: "All Yields",
-    param: {},
-  },
-  { label: "Projects", href: "/projects" },
-  {
-    label: "Stablecoins",
-    href: "/stables",
-    children: [
-      { label: "USD", href: "/stables/usd" },
-      { label: "EUR", href: "/stables/eur" },
-    ],
-  },
-  { label: "ETH & LSTs", href: "/eth" },
-  { label: "Bitcoin", href: "/btc" },
-  { label: "RWA", href: "/rwa" },
-  { label: "Yield-Bearing", href: "/yield-bearing" },
+  { label: "All Yields", icon: "explore", param: {} },
+  { label: "Projects", icon: "grid_view", href: "/projects" },
 ];
 
 const RESEARCH_ITEMS: NavItem[] = [
-  { label: "Yield Feed", href: "/feed" },
-  { label: "Research", disabled: true },
-  { label: "Copy trading", disabled: true },
-  { label: "Bookmarked", disabled: true },
+  { label: "Yield Feed", icon: "rss_feed", href: "/feed" },
+  { label: "Research", icon: "science", disabled: true },
+  { label: "Liquidity Deals", icon: "handshake", disabled: true },
 ];
-
-const DEALS_ITEMS: NavItem[] = [
-  { label: "Liquidity Deals", href: "/deals" },
-];
-
-const PRESET_ITEMS: NavItem[] = [
-  { label: "Stablecoin Vaults", param: { exposure_category: "stablecoin", pool_type: "vault" } },
-  { label: "Maximize ETH", param: { exposure: "ETH", sort: "apr_total", order: "desc" } },
-];
-
-function buildUrl(params: Record<string, string>): string {
-  const qs = new URLSearchParams(params).toString();
-  return qs ? `/?${qs}` : "/";
-}
 
 export function Sidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [stablesExpanded, setStablesExpanded] = useState(
-    pathname.startsWith("/stables"),
-  );
 
   function isActive(item: NavItem): boolean {
-    // href-based items: match pathname
     if (item.href) return pathname === item.href;
-    // param-based items: match when on home page with matching params
     if (item.param) {
-      if (pathname !== "/") return false;
       if (Object.keys(item.param).length === 0) {
-        // "All Yields" — active on home with no asset filters
-        return !searchParams.get("pool_type") && !searchParams.get("exposure_category");
+        return pathname === "/";
       }
+      if (pathname !== "/explore") return false;
       return Object.entries(item.param).every(([k, v]) => searchParams.get(k) === v);
     }
     return false;
@@ -82,7 +46,7 @@ export function Sidebar() {
       router.push(item.href);
     } else if (item.param) {
       const qs = new URLSearchParams(item.param).toString();
-      router.push(qs ? `/?${qs}` : "/");
+      router.push(qs ? `/explore?${qs}` : "/");
     }
     setMobileOpen(false);
   }
@@ -90,124 +54,58 @@ export function Sidebar() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-zinc-800">
-        <span className="text-lg font-bold font-[family-name:var(--font-geist-mono)] text-gray-900 dark:text-zinc-100 tracking-tight">
-          YEELDS
-        </span>
-        <ThemeToggle />
+      <div className="px-5 py-6">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <div>
+            <div className="font-[family-name:var(--font-manrope)] font-extrabold text-lg tracking-tight" style={{ color: "var(--primary)" }}>
+              Yeelds
+            </div>
+            <div className="font-[family-name:var(--font-manrope)] uppercase tracking-[0.2em] text-[9px] font-semibold" style={{ color: "var(--outline)" }}>
+              Yield Discovery
+            </div>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Main navigation">
+      <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-6" aria-label="Main navigation">
         {/* DISCOVER */}
-        <Section title="DISCOVER">
+        <Section title="Discover">
           {DISCOVER_ITEMS.map((item) => (
-            <div key={item.label}>
-              {item.children ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setStablesExpanded(!stablesExpanded);
-                      navigateTo(item);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive(item)
-                        ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
-                        : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    <svg
-                      className={`h-4 w-4 transition-transform ${stablesExpanded ? "rotate-90" : ""}`}
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  {stablesExpanded && (
-                    <div className="ml-6 mt-1 space-y-0.5">
-                      {item.children.map((child) => (
-                        <button
-                          key={child.label}
-                          onClick={() => navigateTo(child)}
-                          className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
-                            isActive(child)
-                              ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
-                              : "text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
-                          }`}
-                        >
-                          {child.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : item.disabled ? (
-                <DisabledItem label={item.label} />
-              ) : (
-                <button
-                  onClick={() => navigateTo(item)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                    isActive(item)
-                      ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
-                      : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              )}
-            </div>
+            <NavButton
+              key={item.label}
+              item={item}
+              active={isActive(item)}
+              onClick={() => navigateTo(item)}
+            />
           ))}
         </Section>
 
         {/* RESEARCH */}
-        <Section title="RESEARCH">
+        <Section title="Research">
           {RESEARCH_ITEMS.map((item) =>
             item.disabled ? (
-              <DisabledItem key={item.label} label={item.label} />
+              <DisabledItem key={item.label} label={item.label} icon={item.icon} />
             ) : (
-              <button
+              <NavButton
                 key={item.label}
+                item={item}
+                active={isActive(item)}
                 onClick={() => navigateTo(item)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive(item)
-                    ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
-                    : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
-                }`}
-              >
-                {item.label}
-              </button>
-            )
+              />
+            ),
           )}
-        </Section>
-
-        {/* DEALS */}
-        <Section title="DEALS">
-          {DEALS_ITEMS.map((item) => (
-            <DisabledItem key={item.label} label={item.label} />
-          ))}
-        </Section>
-
-        {/* PRESET */}
-        <Section title="PRESET">
-          {PRESET_ITEMS.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => navigateTo(item)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive(item)
-                  ? "bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 font-medium"
-                  : "text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
         </Section>
       </nav>
 
-      {/* Bottom CTA */}
+      {/* Bottom */}
+      <div className="px-4 pb-5 pt-3 space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <ThemeToggle />
+        </div>
+      </div>
     </div>
   );
 
@@ -216,7 +114,8 @@ export function Sidebar() {
       {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="absolute top-3 left-3 z-30 p-2 rounded-lg bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-400 md:hidden"
+        className="absolute top-3 left-3 z-30 p-2 rounded-xl md:hidden transition-colors"
+        style={{ backgroundColor: "var(--surface-container-lowest)", color: "var(--on-surface-variant)" }}
         aria-label="Open navigation"
       >
         <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -228,14 +127,18 @@ export function Sidebar() {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <aside className="relative w-56 h-full bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 overflow-y-auto">
+          <aside
+            className="relative w-64 h-full overflow-y-auto shadow-2xl"
+            style={{ backgroundColor: "var(--surface-container-low)" }}
+          >
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute top-3 right-3 p-1 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300"
+              className="absolute top-4 right-4 p-1 transition-colors"
+              style={{ color: "var(--outline)" }}
               aria-label="Close navigation"
             >
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -248,17 +151,63 @@ export function Sidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-col md:w-56 md:shrink-0 border-r border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 h-screen sticky top-0 overflow-y-auto">
+      <aside
+        className="hidden md:flex md:flex-col md:w-60 md:shrink-0 h-screen sticky top-0 overflow-y-auto"
+        style={{ backgroundColor: "var(--surface-container-low)" }}
+      >
         {sidebarContent}
       </aside>
     </>
   );
 }
 
+function NavButton({
+  item,
+  active,
+  onClick,
+  children,
+}: {
+  item: NavItem;
+  active: boolean;
+  onClick: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+        active ? "font-semibold" : "hover:translate-x-0.5"
+      }`}
+      style={{
+        color: active ? "var(--primary)" : "var(--on-surface-variant)",
+        backgroundColor: active ? "var(--surface-container-lowest)" : "transparent",
+        borderRight: active ? "3px solid var(--primary)" : "3px solid transparent",
+      }}
+      aria-current={active ? "page" : undefined}
+    >
+      {item.icon && (
+        <span
+          className="text-[18px] material-symbols-outlined"
+          style={{ color: active ? "var(--primary)" : "var(--outline)" }}
+        >
+          {item.icon}
+        </span>
+      )}
+      <span className="font-[family-name:var(--font-manrope)] uppercase tracking-[0.15em] text-[10px] font-bold">
+        {item.label}
+      </span>
+      {children}
+    </button>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-600">
+      <h3
+        className="px-3 mb-2 text-[9px] font-bold uppercase tracking-[0.25em] font-[family-name:var(--font-manrope)]"
+        style={{ color: "var(--outline)" }}
+      >
         {title}
       </h3>
       <div className="space-y-0.5">{children}</div>
@@ -266,11 +215,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DisabledItem({ label }: { label: string }) {
+function DisabledItem({ label, icon }: { label: string; icon?: string }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-300 dark:text-zinc-700 cursor-not-allowed">
-      <span>{label}</span>
-      <span className="text-[10px] text-gray-300 dark:text-zinc-700">Coming soon</span>
+    <div
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm cursor-not-allowed opacity-40"
+      style={{ color: "var(--outline)" }}
+    >
+      {icon && (
+        <span className="text-[18px] material-symbols-outlined">{icon}</span>
+      )}
+      <span className="font-[family-name:var(--font-manrope)] uppercase tracking-[0.15em] text-[10px] font-bold">
+        {label}
+      </span>
+      <span className="text-[9px] ml-auto">Soon</span>
     </div>
   );
 }

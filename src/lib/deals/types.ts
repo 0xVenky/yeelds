@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SUPPORTED_CHAINS, MAX_REASONABLE_APR } from "@/lib/constants";
+import { SUPPORTED_CHAINS, MAX_REASONABLE_APY } from "@/lib/constants";
 
 // --- Enums ---
 
@@ -19,9 +19,9 @@ export const DealSchema = z.object({
   protocol: z.string().min(1),
   chains: z.array(z.enum(SUPPORTED_CHAINS)).min(1),
   assets: z.array(z.string().min(1)).min(1),
-  apr_estimate: z.number().min(0).max(MAX_REASONABLE_APR).nullable(),
-  bonus_apr: z.number().min(0).max(MAX_REASONABLE_APR).nullable(),
-  native_apr: z.number().min(0).max(MAX_REASONABLE_APR).nullable(),
+  apr_estimate: z.number().min(0).max(MAX_REASONABLE_APY).nullable(),
+  bonus_apr: z.number().min(0).max(MAX_REASONABLE_APY).nullable(),
+  native_apr: z.number().min(0).max(MAX_REASONABLE_APY).nullable(),
   tvl: z.number().min(0).nullable(),
   cap: z.number().min(0).nullable(),
   cap_filled_pct: z.number().min(0).max(100).nullable(),

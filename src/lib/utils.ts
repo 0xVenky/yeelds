@@ -1,14 +1,4 @@
 /**
- * Convert APY (compounded) to APR (non-compounded).
- * Assumes daily compounding (n=365).
- * Input/output are percentages (e.g., 8.5 not 0.085).
- */
-export function apyToApr(apy: number): number {
-  if (apy === 0) return 0;
-  return 365 * (Math.pow(1 + apy / 100, 1 / 365) - 1) * 100;
-}
-
-/**
  * Compute simulation earnings for a given APR and deposit amount.
  * Returns values rounded to 2 decimal places.
  */
@@ -46,6 +36,21 @@ export function formatTvl(tvl: number): string {
 export function formatApr(apr: number | null): string {
   if (apr === null) return "—";
   return `${apr.toFixed(2)}%`;
+}
+
+/**
+ * Organic yield share as a whole-number percentage. Null when no breakdown
+ * data exists (both apr_base and apr_reward are null) or when apr_total <= 0.
+ */
+export function computeOrganicRatio(
+  aprBase: number | null,
+  aprReward: number | null,
+  aprTotal: number,
+): number | null {
+  if (aprTotal <= 0) return null;
+  const hasBreakdown = aprBase !== null || aprReward !== null;
+  if (!hasBreakdown) return null;
+  return Math.round(((aprBase ?? 0) / aprTotal) * 100);
 }
 
 /**

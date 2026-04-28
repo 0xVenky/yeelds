@@ -1,5 +1,10 @@
+import { Tweet } from "react-tweet";
 import type { TweetItem } from "@/lib/feed/types";
 import { formatRelativeTime } from "@/lib/feed/utils";
+
+function extractTweetId(url: string): string | null {
+  return url.match(/\/status\/(\d+)/)?.[1] ?? null;
+}
 
 function Initials({ name }: { name: string }) {
   const initials = name
@@ -16,8 +21,34 @@ function Initials({ name }: { name: string }) {
 }
 
 export function TweetCard({ item }: { item: TweetItem }) {
+  if (item.render_mode === "embed") {
+    const tweetId = extractTweetId(item.url);
+    if (!tweetId) {
+      return (
+        <div className="border-l-4 border-blue-500 rounded-lg bg-[var(--bg-secondary)] p-4 hover:scale-[1.02] transition-all duration-300">
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 transition-colors text-sm"
+          >
+            View tweet on X &rarr;
+          </a>
+        </div>
+      );
+    }
+    return (
+      <div
+        data-theme="dark"
+        className="border-l-4 border-blue-500 rounded-lg overflow-hidden hover:scale-[1.02] transition-all duration-300 [&_.react-tweet-theme]:!my-0"
+      >
+        <Tweet id={tweetId} />
+      </div>
+    );
+  }
+
   return (
-    <div className="border-l-4 border-blue-500 rounded-lg bg-[var(--bg-secondary)] p-4">
+    <div className="border-l-4 border-blue-500 rounded-lg bg-[var(--bg-secondary)] p-4 hover:scale-[1.02] transition-all duration-300">
       {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <Initials name={item.author_name} />

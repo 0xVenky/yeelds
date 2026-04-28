@@ -12,11 +12,12 @@ export function RiskBadges({ risk }: { risk: PoolListItem["risk"] }) {
     <span className="inline-flex items-center gap-1.5 flex-wrap">
       {risk.contract_age_days !== null && (
         <span
-          className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+          style={
             risk.contract_age_days < 30
-              ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400"
-              : "bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400"
-          }`}
+              ? { backgroundColor: "#fef2f2", color: "#dc2626" }
+              : { backgroundColor: "var(--surface-container-high)", color: "var(--on-surface-variant)" }
+          }
           aria-label={`Contract age: ${risk.contract_age_days} days`}
         >
           {risk.contract_age_days < 30 ? "New" : `${risk.contract_age_days}d`}
@@ -24,29 +25,20 @@ export function RiskBadges({ risk }: { risk: PoolListItem["risk"] }) {
       )}
       {risk.is_verified === true && (
         <span
-          className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+          className="inline-flex items-center gap-0.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+          style={{ backgroundColor: "var(--secondary-container)", color: "var(--on-secondary-container)" }}
           aria-label="Contract verified"
         >
-          <svg
-            className="h-3 w-3"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M13.25 4.75L6 12 2.75 8.75"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+          <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M13.25 4.75L6 12 2.75 8.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Verified
         </span>
       )}
       {risk.is_audited === true && (
         <span
-          className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+          className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+          style={{ backgroundColor: "var(--secondary-container)", color: "var(--on-secondary-container)" }}
           aria-label="Protocol audited"
         >
           Audited

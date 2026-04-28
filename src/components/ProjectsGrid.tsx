@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ProtocolSummary } from "@/lib/api/query";
 import { ProtocolCard } from "./ProtocolCard";
+import { ChainDot } from "./ChainDot";
 
 const CHAIN_OPTIONS = ["ethereum", "arbitrum", "base"] as const;
 const ASSET_CLASS_OPTIONS = [
@@ -45,6 +46,7 @@ export function ProjectsGrid({ protocols }: { protocols: ProtocolSummary[] }) {
                 : "border-zinc-300 dark:border-zinc-700 text-[var(--text-muted)] hover:border-zinc-400 dark:hover:border-zinc-600"
             }`}
           >
+            <ChainDot chain={chain} size={14} />
             {chain.charAt(0).toUpperCase() + chain.slice(1)}
           </button>
         ))}

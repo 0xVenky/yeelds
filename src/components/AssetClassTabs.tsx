@@ -19,7 +19,7 @@ export function AssetClassTabs() {
 
   return (
     <nav
-      className="flex gap-1.5 px-4 sm:px-6 py-2.5 border-b border-gray-100 dark:border-zinc-800/50 overflow-x-auto"
+      className="flex gap-2 px-6 sm:px-8 pb-2 overflow-x-auto hide-scrollbar"
       aria-label="Asset classes"
     >
       {TABS.map((tab) => {
@@ -28,11 +28,14 @@ export function AssetClassTabs() {
           <button
             key={tab.href}
             onClick={() => router.push(tab.href)}
-            className={`shrink-0 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-              active
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800/50"
+            className={`shrink-0 px-5 py-2 rounded-full text-sm font-bold transition-all ${
+              active ? "text-white shadow-md shadow-purple-500/20" : "hover:brightness-[0.95]"
             }`}
+            style={
+              active
+                ? { background: "linear-gradient(135deg, #630ed4, #7c3aed)" }
+                : { backgroundColor: "var(--surface-container-high)", color: "var(--on-surface-variant)" }
+            }
             aria-current={active ? "page" : undefined}
           >
             {tab.label}
