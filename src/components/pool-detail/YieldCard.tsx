@@ -10,24 +10,15 @@ export function YieldCard({ pool }: { pool: PoolDetail }) {
       <h2 className="text-sm font-medium font-[family-name:var(--font-manrope)] uppercase tracking-wider mb-4" style={{ color: "var(--outline)" }}>
         Yield Breakdown
       </h2>
-      <div className="text-3xl font-bold tabular-nums mb-1" style={{ color: "var(--secondary)" }}>
+      <div className="text-3xl font-bold tabular-nums mb-4" style={{ color: "var(--secondary)" }}>
         {formatApr(y.apr_total)}
       </div>
-      {y.is_estimated && (
-        <p className="text-xs text-amber-500 mb-4">
-          7-day average unavailable — rate may reflect a temporary spike
-        </p>
-      )}
-      {!y.is_estimated && <div className="mb-4" />}
 
       {/* APR breakdown bar */}
       <div className="mb-4">
         <YieldBreakdownExpanded yield={{ ...y, yieldSource: pool.yield_source }} />
       </div>
 
-      {/* Headline apr_total is already the 7-day-smoothed total when available
-          (Decision 23). The previous "7d Avg {source}" row was redundant with
-          the headline and mislabeled the total-windowed value as base-only. */}
       {y.il_7d !== null && (
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">

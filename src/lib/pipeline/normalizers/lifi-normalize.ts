@@ -117,10 +117,8 @@ export function normalizeLifiVault(raw: LifiVaultRaw): PoolListItem | null {
   const apyTotal = raw.analytics.apy.total;
   const apyBase = raw.analytics.apy.base;
   const apyReward = raw.analytics.apy.reward;
-  // LI.FI `apy7d` is the 7-day smoothed **total** APY (base + reward over the
-  // window), NOT a base-only average. Verified 2026-04-17 against live data.
-  // Decision 23 (supersedes 17) uses it directly as the preferred total.
   const apy7d = raw.analytics.apy7d;
+  const apy30d = raw.analytics.apy30d;
 
   const poolType = derivePoolType(raw.tags);
   const underlyingTokens = raw.underlyingTokens.map(t => resolveToken(t, chain));
@@ -136,12 +134,11 @@ export function normalizeLifiVault(raw: LifiVaultRaw): PoolListItem | null {
     symbol: raw.name,
     tvl_usd: tvl,
     yield: {
-      apr_total: apy7d ?? apyTotal,
+      apr_total: apy30d ?? apyTotal,
       apr_base: apyBase,
       apr_reward: apyReward,
       apr_total_7d: apy7d,
       il_7d: null,
-      is_estimated: apy7d === null,
     },
     exposure: {
       type: mapExposureType(raw.tags),

@@ -84,9 +84,6 @@ export function PoolTable({ data }: { data: PaginatedResponse<PoolListItem> }) {
                   <div className="relative group/apr">
                     <div className="font-bold tabular-nums cursor-default" style={{ color: "var(--secondary)" }}>
                       {formatApr(pool.yield.apr_total)}
-                      {pool.yield.is_estimated && (
-                        <span className="ml-1 text-[10px] text-amber-500" title="7-day average unavailable">~</span>
-                      )}
                     </div>
                     {(pool.yield.apr_base !== null || pool.yield.apr_reward !== null) && (
                       <div

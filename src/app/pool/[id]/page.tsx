@@ -69,14 +69,6 @@ export default async function PoolDetailPage({
             }}
           />
           <span className="text-sm font-semibold" style={{ color: "var(--secondary)" }}>
-            {pool.yield.is_estimated && (
-              <span
-                className="mr-0.5 text-[10px] text-amber-500"
-                title="7-day average unavailable — rate may reflect a temporary spike"
-              >
-                ~
-              </span>
-            )}
             {formatApr(pool.yield.apr_total)} APY
           </span>
           <span className="text-sm">{formatTvl(pool.tvl_usd)} TVL</span>
