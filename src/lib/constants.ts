@@ -38,6 +38,18 @@ export const MAX_REASONABLE_APY = 10000;
 // LI.FI Earn API (Decision 20 — primary data source)
 export const LIFI_EARN_BASE_URL = "https://earn.li.fi";
 
+// Depeg classification sets — keyed by symbol, sourced from docs/product-context.md.
+// "Known safe" / "caution" enumerations; "high-risk" is a market-cap-driven heuristic
+// we cannot derive in-pipe (no mcap data) — pools with no caution-or-worse stable but
+// at least one known-safe stable resolve to "known-safe"; if any underlying is in the
+// caution set, the pool resolves to "caution".
+export const KNOWN_SAFE_STABLES: ReadonlySet<string> = new Set([
+  "USDC", "USDT", "DAI", "FRAX",
+]);
+export const CAUTION_STABLES: ReadonlySet<string> = new Set([
+  "USDbC", "USDX", "RLUSD", "GHO",
+]);
+
 // Yield source types — where the yield comes from
 export const YIELD_SOURCE_TYPES = [
   "trading_fees", "lending_interest", "staking_rewards",
