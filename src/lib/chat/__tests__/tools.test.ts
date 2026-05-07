@@ -355,3 +355,127 @@ describe("compare_vaults", () => {
     expect(result.cache_status).toBe("ok");
   });
 });
+
+describe("search_vaults — Y3 chat-vs-canonical asset_class translation", () => {
+  it("'eth' filter matches asset_class === 'eth_class'", async () => {
+    const ethPool = makePool({
+      id: "eth-pool",
+      vault_address: "0x2222222222222222222222222222222222222222",
+      exposure: {
+        type: "single",
+        category: "blue_chip",
+        asset_class: "eth_class",
+        has_yield_bearing_token: false,
+        underlying_tokens: [],
+      },
+    });
+    const btcPool = makePool({
+      id: "btc-pool",
+      vault_address: "0x3333333333333333333333333333333333333333",
+      exposure: {
+        type: "single",
+        category: "blue_chip",
+        asset_class: "btc_class",
+        has_yield_bearing_token: false,
+        underlying_tokens: [],
+      },
+    });
+    mockedGetCachedPools.mockReturnValue([ethPool, btcPool]);
+
+    const result = (await executeTool("search_vaults", {
+      asset_class: "eth",
+    })) as { vaults: { vault_address: string }[] };
+    expect(result.vaults).toHaveLength(1);
+    expect(result.vaults[0].vault_address).toBe(ethPool.vault_address);
+  });
+
+  it("'stablecoin' matches both 'usd_stable' and 'eur_stable' canonicals", async () => {
+    const usdPool = makePool({
+      id: "usd",
+      vault_address: "0x4444444444444444444444444444444444444444",
+      exposure: {
+        type: "single",
+        category: "stablecoin",
+        asset_class: "usd_stable",
+        has_yield_bearing_token: false,
+        underlying_tokens: [],
+      },
+    });
+    const eurPool = makePool({
+      id: "eur",
+      vault_address: "0x5555555555555555555555555555555555555555",
+      exposure: {
+        type: "single",
+        category: "stablecoin",
+        asset_class: "eur_stable",
+        has_yield_bearing_token: false,
+        underlying_tokens: [],
+      },
+    });
+    const ethPool = makePool({
+      id: "eth",
+      vault_address: "0x6666666666666666666666666666666666666666",
+      exposure: {
+        type: "single",
+        category: "blue_chip",
+        asset_class: "eth_class",
+        has_yield_bearing_token: false,
+        underlying_tokens: [],
+      },
+    });
+    mockedGetCachedPools.mockReturnValue([usdPool, eurPool, ethPool]);
+
+    const result = (await executeTool("search_vaults", {
+      asset_class: "stablecoin",
+    })) as { vaults: unknown[] };
+    expect(result.vaults).toHaveLength(2);
+  });
+
+  it("'yield-bearing' filters by has_yield_bearing_token, not asset_class", async () => {
+    const ybPool = makePool({
+      id: "yb",
+      vault_address: "0x7777777777777777777777777777777777777777",
+      exposure: {
+        type: "single",
+        category: "stablecoin",
+        asset_class: "usd_stable",
+        has_yield_bearing_token: true,
+        underlying_tokens: [],
+      },
+    });
+    const normalPool = makePool({
+      id: "normal",
+      vault_address: "0x8888888888888888888888888888888888888888",
+      exposure: {
+        type: "single",
+        category: "stablecoin",
+        asset_class: "usd_stable",
+        has_yield_bearing_token: false,
+        underlying_tokens: [],
+      },
+    });
+    mockedGetCachedPools.mockReturnValue([ybPool, normalPool]);
+
+    const result = (await executeTool("search_vaults", {
+      asset_class: "yield-bearing",
+    })) as { vaults: { vault_address: string }[] };
+    expect(result.vaults).toHaveLength(1);
+    expect(result.vaults[0].vault_address).toBe(ybPool.vault_address);
+  });
+});
+
+describe("executeTool — Y1 throw propagation", () => {
+  it("propagates internal exceptions to the caller (no internal catch swallow)", async () => {
+    // Y1 contract: executeTool re-throws so the route closure can set
+    // `is_error: true` only on real exceptions. Pre-Y1 the inner catch
+    // swallowed and returned a shaped error, conflating thrown failures
+    // with data outcomes like { error: "Vault not found" }.
+    mockedGetCachedPools.mockImplementationOnce(() => {
+      throw new Error("simulated cache failure");
+    });
+
+    await expect(
+      executeTool("search_vaults", { chain: "ethereum" }),
+    ).rejects.toThrow("simulated cache failure");
+  });
+});

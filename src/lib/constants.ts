@@ -2,10 +2,14 @@
 export const YIELD_UNIT = "APY" as const;
 
 // Chat tool — model-facing asset class enum exposed in `search_vaults.input_schema`.
-// NOTE: these values are an alias the model sees, not the canonical
-// `pool.exposure.asset_class` values (which come from tokens.json: usd_stable,
-// eth_class, btc_class, rwa, eur_stable). Realigning the two is out of scope
-// for the chat-review-fixes pass — see GAPS in the dispatch report.
+// These values are an alias the model sees; the canonical `pool.exposure.asset_class`
+// values produced by `lifi-normalize.ts` are `usd_stable` / `eur_stable` /
+// `eth_class` / `btc_class` / `rwa`. The `CHAT_ASSET_CLASS_TO_CANONICAL` map
+// below is the translation layer used inside `execSearchVaults` so a model
+// query for `asset_class: "eth"` actually matches `eth_class`-flagged pools.
+// `"yield-bearing"` is the one chat value that maps to a different field
+// (`exposure.has_yield_bearing_token`), not `asset_class` — handled as a
+// special case in the filter, not in this map.
 export const CHAT_ASSET_CLASSES = [
   "stablecoin",
   "eth",
@@ -14,6 +18,14 @@ export const CHAT_ASSET_CLASSES = [
   "yield-bearing",
 ] as const;
 export type ChatAssetClass = (typeof CHAT_ASSET_CLASSES)[number];
+
+export const CHAT_ASSET_CLASS_TO_CANONICAL: Record<string, readonly string[]> = {
+  stablecoin: ["usd_stable", "eur_stable"],
+  eth: ["eth_class"],
+  btc: ["btc_class"],
+  rwa: ["rwa"],
+  // "yield-bearing" intentionally absent — see comment block above.
+};
 
 // Supported chains
 export const SUPPORTED_CHAINS = ["ethereum", "arbitrum", "base"] as const;

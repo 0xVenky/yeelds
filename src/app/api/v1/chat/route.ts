@@ -239,31 +239,31 @@ async function runToolLoop(
     // tool_results.
     apiMessages.push({ role: "assistant", content: final.content });
 
-    // Per-tool error isolation (chat-review-fixes.md B5). `executeTool` already
-    // wraps its switch in try/catch, but the surrounding round-trip used
-    // `Promise.all` which rejects the whole batch on a single thrown rejection.
-    // The catch here makes that path identical to the inner-catch path: a
-    // shaped `{error}` flows back to the model with `is_error: true`, so the
-    // model can recover within the same turn instead of seeing the route
-    // handler's generic fallback.
+    // Per-tool error isolation (chat-review-fixes.md B5 + Y1). `executeTool`
+    // PROPAGATES exceptions (Y1 contract — see `tools.ts`); the closure here
+    // catches them so a thrown tool doesn't reject the whole `Promise.all`
+    // batch. `is_error: true` is set ONLY on a caught throw — that's the
+    // signal Anthropic uses for "tool execution failed". Data outcomes like
+    // `{ error: "Vault not found" }` propagate to the model verbatim with
+    // `is_error: false` so the model communicates them rather than retrying
+    // as a tool failure. The closure must not throw — Promise.all rejects
+    // the whole batch on a single rejection.
     const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
       toolUseBlocks.map(async (b) => {
         let result: unknown;
+        let threw = false;
         try {
           result = await executeTool(b.name, b.input);
         } catch (err) {
+          threw = true;
           const message = err instanceof Error ? err.message : String(err);
           result = { error: `Tool ${b.name} failed: ${message}` };
         }
-        const isError =
-          result !== null &&
-          typeof result === "object" &&
-          "error" in (result as Record<string, unknown>);
         return {
           type: "tool_result" as const,
           tool_use_id: b.id,
           content: JSON.stringify(result),
-          is_error: isError,
+          is_error: threw,
         };
       }),
     );

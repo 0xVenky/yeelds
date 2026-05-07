@@ -19,7 +19,11 @@ import {
   type CacheStatus,
 } from "@/lib/pipeline/cache";
 import type { PoolListItem } from "@/lib/types";
-import { CHAT_ASSET_CLASSES, type SupportedChain } from "@/lib/constants";
+import {
+  CHAT_ASSET_CLASSES,
+  CHAT_ASSET_CLASS_TO_CANONICAL,
+  type SupportedChain,
+} from "@/lib/constants";
 import { getTokenBalances, type AlchemyChain } from "@/lib/alchemy/client";
 import { fetchPortfolio, type LifiPosition } from "@/lib/lifi/client";
 
@@ -267,7 +271,21 @@ async function execSearchVaults(
     );
   }
   if (input.asset_class) {
-    pools = pools.filter((p) => p.exposure.asset_class === input.asset_class);
+    // Y3: translate the model-facing alias to the canonical asset_class
+    // values produced by `lifi-normalize.ts`. "yield-bearing" filters by a
+    // different field (`has_yield_bearing_token`) so it's special-cased.
+    if (input.asset_class === "yield-bearing") {
+      pools = pools.filter((p) => p.exposure.has_yield_bearing_token);
+    } else {
+      const canonicalSet = new Set(
+        CHAT_ASSET_CLASS_TO_CANONICAL[input.asset_class] ?? [],
+      );
+      pools = pools.filter(
+        (p) =>
+          p.exposure.asset_class !== null &&
+          canonicalSet.has(p.exposure.asset_class),
+      );
+    }
   }
   if (typeof input.min_apy === "number") {
     pools = pools.filter((p) => p.yield.apr_total >= input.min_apy!);
@@ -460,9 +478,13 @@ export async function executeTool(
   name: string,
   input: unknown,
 ): Promise<unknown> {
-  // Tool-execution exceptions are caught and returned to the model as the
-  // tool_result content (`{error: "..."}`) so the model can recover within
-  // the same turn — see chatbot.md route.ts step.
+  // Y1 contract: this function PROPAGATES exceptions. The route closure
+  // catches them and sets `is_error: true` on the resulting tool_result so
+  // the model can distinguish "tool execution failed" (real exception) from
+  // "tool returned an error-shaped result" (data outcome like
+  // `{ error: "Vault not found" }`). The console.error is preserved for
+  // ops visibility on the server side; the throw is preserved for the
+  // closure to detect.
   try {
     const i = (input ?? {}) as Record<string, unknown>;
     switch (name) {
@@ -486,7 +508,7 @@ export async function executeTool(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[chat-tools] ${name} failed: ${message}`);
-    return { error: `Tool ${name} failed: ${message}` };
+    throw err;
   }
 }
 

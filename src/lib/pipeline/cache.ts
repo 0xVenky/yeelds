@@ -18,13 +18,15 @@ let isRefreshing = false;
 // unavailable" only if the tool result tells them which is which.
 export type CacheStatus = "ok" | "stale" | "empty";
 
-// 15 minutes — the cache pipeline normally refreshes faster than this in
-// active use; anything older suggests upstream is degraded. Picked over a
-// shorter window (5min) so a single slow LI.FI fetch doesn't trip the flag,
-// and over a longer one (1h) because half-hour-old yields are stale enough
-// to mislead a chat user. Keep this in sync with the pipeline refresh
-// cadence if that ever lengthens.
-const CACHE_STALENESS_MS = 15 * 60 * 1000;
+// 30 minutes — 2× the LI.FI refresh cadence (15min, see CLAUDE.md
+// "Common DeFi Pitfalls / Data Freshness"). Picked so that a single
+// missed refresh doesn't trip "stale" right when the next refresh is
+// moments away (a 15min threshold sits exactly at the cadence and
+// flickers on the steady state). Picked over a shorter window (5min)
+// so slow LI.FI fetches don't false-positive, and over a longer one
+// (1h) because hour-old yields are stale enough to mislead a chat user.
+// Bump this if the pipeline refresh cadence ever lengthens.
+const CACHE_STALENESS_MS = 30 * 60 * 1000;
 
 export function getCachedPools(): PoolListItem[] {
   return cachedPools;
