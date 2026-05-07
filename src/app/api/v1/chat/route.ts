@@ -7,10 +7,17 @@
 //   - Uses client.messages.stream() (per chatbot.md) so when the terminal
 //     round emits text, deltas reach the browser as the model produces them.
 //
+// POST body must include `connectedAddress` (validated 0x[40hex]). A missing
+// or malformed value returns 401 `{ error: "Wallet connection required" }` —
+// the 401 status communicates auth-required semantics to the frontend, which
+// uses it to trigger the wallet-connect modal. Per chat-review-fixes.md A2
+// (Layers 1+2). Layers 3 (rate limiting) and 4 (SIWE) are deferred for CTO
+// discussion.
+//
 // Address-injection design (chatbot.md dispatch decision):
-//   The `connectedAddress`, when present, is appended as a SECOND, UNCACHED
-//   system block. Inlining it into SYSTEM_PROMPT would change the prefix bytes
-//   per distinct address and invalidate the cache key on every connect.
+//   The `connectedAddress` is appended as a SECOND, UNCACHED system block.
+//   Inlining it into SYSTEM_PROMPT would change the prefix bytes per distinct
+//   address and invalidate the cache key on every connect.
 //
 // Stream-format contract for Pixel (matches lyfi's wire shape):
 //   - Content-Type: text/plain; charset=utf-8
@@ -41,7 +48,10 @@ const ChatPostBodySchema = z.object({
       }),
     )
     .min(1),
-  connectedAddress: z.string().optional(),
+  // Required — drive-by traffic without a connected wallet is rejected at
+  // the auth boundary (chat-review-fixes.md A2 Layer 2). Shape validated by
+  // ADDRESS_RE below; Zod presence-check fails fast with a 401 wrapper.
+  connectedAddress: z.string(),
 });
 
 // Build the tools array with cache_control on the LAST tool definition.
@@ -99,10 +109,23 @@ export async function POST(req: Request) {
 
   const parsed = ChatPostBodySchema.safeParse(raw);
   if (!parsed.success) {
+    // If the only thing that failed is the connectedAddress presence/type,
+    // surface a 401 so the frontend can trigger the wallet-connect modal.
+    // Any other Zod failure is a client bug → 400.
+    const issues = parsed.error.issues;
+    const isAuthOnly =
+      issues.length > 0 &&
+      issues.every((i) => i.path[0] === "connectedAddress");
+    if (isAuthOnly) {
+      return Response.json(
+        { error: "Wallet connection required" },
+        { status: 401 },
+      );
+    }
     return Response.json(
       {
         error: "Invalid request body",
-        issues: parsed.error.issues.slice(0, 3),
+        issues: issues.slice(0, 3),
       },
       { status: 400 },
     );
@@ -116,13 +139,14 @@ export async function POST(req: Request) {
     );
   }
 
-  if (
-    body.connectedAddress !== undefined &&
-    !ADDRESS_RE.test(body.connectedAddress)
-  ) {
+  // Second-line validator: presence guaranteed by Zod, shape guaranteed here.
+  // Malformed addresses (right-shape string, wrong content) return 401 to
+  // match the missing-address case — both signal "frontend should re-prompt
+  // for a real wallet connection."
+  if (!ADDRESS_RE.test(body.connectedAddress)) {
     return Response.json(
-      { error: "Invalid connectedAddress" },
-      { status: 400 },
+      { error: "Wallet connection required" },
+      { status: 401 },
     );
   }
 

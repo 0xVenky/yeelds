@@ -140,7 +140,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: "get_wallet_holdings",
     description:
-      "Fetch ERC-20 and native token balances for a wallet on Ethereum, Arbitrum, and Base. Returns tokens with non-zero balance and known metadata.",
+      "Fetch ERC-20 and native ETH token balances on Ethereum, Arbitrum, and Base. Returns tokens with non-zero balance, native ETH first if held.",
     input_schema: {
       type: "object" as const,
       properties: {

@@ -11,5 +11,7 @@ export type ChatMessage = {
 
 export type ChatPostBody = {
   messages: ChatMessage[];
-  connectedAddress?: string;
+  // Required — backend rejects with 401 when missing or malformed
+  // (chat-review-fixes.md A2 Layer 2).
+  connectedAddress: string;
 };

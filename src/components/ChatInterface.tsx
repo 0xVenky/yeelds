@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useAccount } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { ChatMessage } from "./ChatMessage";
 
 // Inlined per Phase B dispatch — Mario owns the canonical types.ts in Phase A.
@@ -26,6 +27,8 @@ export function ChatInterface() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const account = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const walletConnected = !!account.address;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -64,6 +67,15 @@ export function ChatInterface() {
       });
 
       if (!res.ok) {
+        // 401 = wallet got disconnected mid-session (server's Layer 2 gate).
+        // Roll back the optimistic user message and re-open the connect modal
+        // instead of surfacing as an assistant message.
+        if (res.status === 401) {
+          setMessages(messages);
+          setInput(text.trim());
+          if (openConnectModal) openConnectModal();
+          return;
+        }
         const err = (await res.json().catch(() => ({}))) as { error?: string };
         const errorText = err.error ?? "Something went wrong. Please try again.";
         const isCap = errorText === MESSAGE_CAP_ERROR;
@@ -165,8 +177,14 @@ export function ChatInterface() {
         <div className="max-w-3xl mx-auto space-y-4">
           {isEmpty ? (
             <EmptyState
-              onSelect={(prompt) => sendMessage(prompt)}
-              walletConnected={!!account.address}
+              onSelect={(prompt) => {
+                if (!walletConnected) {
+                  if (openConnectModal) openConnectModal();
+                  return;
+                }
+                sendMessage(prompt);
+              }}
+              walletConnected={walletConnected}
             />
           ) : (
             messages.map((msg, i) => (
@@ -209,37 +227,54 @@ export function ChatInterface() {
         className="px-4 py-4 sm:px-6"
         style={{ backgroundColor: "var(--surface-container-low)" }}
       >
-        <div className="max-w-3xl mx-auto flex gap-2 items-end">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              capReached
-                ? "Start a new conversation to continue."
-                : "Ask about yields, vaults, or your wallet..."
-            }
-            disabled={isLoading}
-            rows={1}
-            className="flex-1 resize-none rounded-2xl px-4 py-3 text-sm focus:outline-none focus:[box-shadow:0_0_0_2px_var(--primary)] disabled:opacity-50"
-            style={{
-              backgroundColor: "var(--surface-container-lowest)",
-              color: "var(--on-surface)",
-            }}
-            aria-label="Chat input"
-          />
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={isLoading || !input.trim() || capReached}
-            className="px-5 py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: "var(--primary)",
-              color: "var(--on-primary)",
-            }}
-          >
-            Send
-          </button>
+        <div className="max-w-3xl mx-auto">
+          {walletConnected ? (
+            <div className="flex gap-2 items-end">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  capReached
+                    ? "Start a new conversation to continue."
+                    : "Ask about yields, vaults, or your wallet..."
+                }
+                disabled={isLoading}
+                rows={1}
+                className="flex-1 resize-none rounded-2xl px-4 py-3 text-sm focus:outline-none focus:[box-shadow:0_0_0_2px_var(--primary)] disabled:opacity-50"
+                style={{
+                  backgroundColor: "var(--surface-container-lowest)",
+                  color: "var(--on-surface)",
+                }}
+                aria-label="Chat input"
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={isLoading || !input.trim() || capReached}
+                className="px-5 py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: "var(--primary)",
+                  color: "var(--on-primary)",
+                }}
+              >
+                Send
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                if (openConnectModal) openConnectModal();
+              }}
+              className="w-full px-5 py-3 rounded-2xl text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{
+                backgroundColor: "var(--primary)",
+                color: "var(--on-primary)",
+              }}
+            >
+              Connect wallet to chat
+            </button>
+          )}
         </div>
         <p
           className="text-center text-[10px] mt-2"

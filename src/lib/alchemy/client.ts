@@ -1,8 +1,18 @@
-// Alchemy ERC-20 + native balance fetcher for Ethereum, Arbitrum, and Base.
+// Alchemy ERC-20 + native ETH balance fetcher for Ethereum, Arbitrum, and Base.
 //
 // Uses raw fetch against Alchemy's JSON-RPC HTTP endpoints — no SDK. One key
 // covers all three chains (Alchemy's "Universal" key); per-chain subdomain
 // switches the network.
+//
+// Two upstream calls per chain, fanned out in parallel (`Promise.allSettled`):
+//   - `alchemy_getTokenBalances` for ERC-20 balances → metadata resolved via
+//     `alchemy_getTokenMetadata`, then filtered through the curated
+//     `tokens.json` allowlist (`lookupToken`) plus a symbol-shape regex.
+//   - `eth_getBalance` for the wallet's native ETH balance. If non-zero, a
+//     synthetic row with the canonical zero-address sentinel
+//     (`0x000…000`) and `symbol: "ETH"` is prepended to `tokens[]`. All
+//     three supported chains (Ethereum / Arbitrum / Base) use ETH as their
+//     native gas token, so no per-chain symbol switch is required.
 //
 // Decision 24 fail-safe pattern: if ALCHEMY_API_KEY is missing we log a
 // module-load console.error and let calls return [] per chain, mirroring how
@@ -12,9 +22,31 @@
 //
 // Per-chain isolation: each chain is fetched independently and a failure on
 // one (RPC error, parse error, network blip) returns an empty token list for
-// that chain only — the others still get through.
+// that chain only — the others still get through. Native and ERC-20 fetches
+// are independently isolated within a chain via `Promise.allSettled`, so a
+// failure on one path does not poison the other.
+//
+// Allowlist + prompt-injection defense: ERC-20 metadata flows through the
+// `tokens.json` allowlist before reaching the chat tool result. Anything not
+// in the curated 94-entry seed is silently dropped so airdrop-spam tokens
+// (e.g. "VISIT-claim.com", "IGNORE PRIOR INSTRUCTIONS") never enter the
+// model's context. A symbol-shape regex backstops the allowlist in case the
+// seed is ever poisoned. Native ETH is exempt — it's a chain-level concept
+// with no `tokens.json` entry, so it's prepended AFTER the filter.
+
+import { lookupToken } from "@/lib/pipeline/tokens";
 
 export type AlchemyChain = "ethereum" | "arbitrum" | "base";
+
+// Canonical zero-address sentinel for native gas tokens. Mirrors the convention
+// used by aggregators (LI.FI, 1inch, Paraswap) so callers can treat native and
+// ERC-20 rows uniformly.
+const NATIVE_ETH_ADDRESS = "0x0000000000000000000000000000000000000000";
+// Belt-and-suspenders symbol shape check applied to allowlisted tokens — guards
+// against future seed corruption or hostile metadata that survived the
+// allowlist (e.g. an attacker pushing a PR that adds a row with a malicious
+// symbol). Mirrors the chat-tools defense-in-depth pattern.
+const SAFE_SYMBOL_RE = /^[A-Za-z0-9_.\-]{1,16}$/;
 
 export type TokenBalance = {
   address: string;
@@ -138,6 +170,23 @@ async function fetchChainTokenBalances(
     }));
 }
 
+/**
+ * Fetch the wallet's native ETH balance via JSON-RPC `eth_getBalance`. Returns
+ * the raw hex string (preserves precision; callers convert as needed) and the
+ * derived bigint. Errors propagate — caller is responsible for isolating them
+ * from the ERC-20 path via `Promise.allSettled`.
+ */
+async function fetchNativeBalance(
+  url: string,
+  address: string,
+): Promise<{ rawHex: string; value: bigint }> {
+  const rawHex = await rpcCall<string>(url, "eth_getBalance", [
+    address,
+    "latest",
+  ]);
+  return { rawHex, value: hexToBigInt(rawHex) };
+}
+
 async function fetchTokenMetadata(
   url: string,
   contractAddress: string,
@@ -164,52 +213,109 @@ async function getChainBalances(
   }
   const url = `${ALCHEMY_HOSTS[chain]}/${apiKey}`;
 
-  try {
-    const rawBalances = await fetchChainTokenBalances(url, address);
-    if (rawBalances.length === 0) {
-      return { chain, address, tokens: [] };
+  // Fan out ERC-20 and native ETH fetches in parallel. `Promise.allSettled`
+  // ensures a failure on one path does not poison the other — e.g., if the
+  // ERC-20 call fails we still surface native ETH (and vice-versa).
+  const [erc20Settled, nativeSettled] = await Promise.allSettled([
+    fetchChainTokenBalances(url, address),
+    fetchNativeBalance(url, address),
+  ]);
+
+  const tokens: TokenBalance[] = [];
+
+  // --- ERC-20 path ---
+  if (erc20Settled.status === "fulfilled") {
+    const rawBalances = erc20Settled.value;
+    if (rawBalances.length > 0) {
+      try {
+        // Resolve metadata in parallel — Alchemy rate-limits at 25-30 RPS on free
+        // tier and these are independent calls. The list is already filtered to
+        // non-zero balances, so cost is bounded by what the wallet actually holds.
+        const metadataResults = await Promise.allSettled(
+          rawBalances.map((b) => fetchTokenMetadata(url, b.contractAddress)),
+        );
+
+        for (let i = 0; i < rawBalances.length; i++) {
+          const raw = rawBalances[i];
+          const metadataResult = metadataResults[i];
+          if (metadataResult.status !== "fulfilled" || !metadataResult.value) {
+            continue;
+          }
+          const meta = metadataResult.value;
+          // Drop tokens with no metadata — without symbol or decimals the row is
+          // useless to the model and a likely scam token.
+          if (!meta.symbol || meta.decimals === null) continue;
+
+          // Allowlist gate: only tokens present in the curated `tokens.json`
+          // seed flow through. Defends the chat surface against airdrop-spam
+          // names that double as prompt-injection payloads.
+          if (!lookupToken(raw.contractAddress, chain)) continue;
+
+          // Belt-and-suspenders: even allowlisted tokens must clear a symbol
+          // shape check. Defends against future seed corruption.
+          if (!SAFE_SYMBOL_RE.test(meta.symbol)) continue;
+
+          tokens.push({
+            address: raw.contractAddress,
+            symbol: meta.symbol,
+            balance: raw.balance,
+            decimals: meta.decimals,
+            balanceFormatted: formatBalance(raw.balance, meta.decimals),
+          });
+        }
+      } catch (err) {
+        // Metadata-stage error: log but don't poison native-ETH path.
+        console.warn(
+          `[alchemy] ${chain} metadata stage failed: ${(err as Error).message}`,
+        );
+      }
     }
-
-    // Resolve metadata in parallel — Alchemy rate-limits at 25-30 RPS on free tier
-    // and these are independent calls. The list is already filtered to non-zero
-    // balances, so the cost is bounded by what the wallet actually holds.
-    const metadataResults = await Promise.allSettled(
-      rawBalances.map((b) => fetchTokenMetadata(url, b.contractAddress)),
+  } else {
+    console.warn(
+      `[alchemy] ${chain} ERC-20 fetch failed: ${erc20Settled.reason instanceof Error ? erc20Settled.reason.message : String(erc20Settled.reason)}`,
     );
+  }
 
-    const tokens: TokenBalance[] = [];
-    for (let i = 0; i < rawBalances.length; i++) {
-      const raw = rawBalances[i];
-      const metadataResult = metadataResults[i];
-      if (metadataResult.status !== "fulfilled" || !metadataResult.value) continue;
-      const meta = metadataResult.value;
-      // Drop tokens with no metadata — without symbol or decimals the row is
-      // useless to the model and a likely scam token.
-      if (!meta.symbol || meta.decimals === null) continue;
-      tokens.push({
-        address: raw.contractAddress,
-        symbol: meta.symbol,
-        balance: raw.balance,
-        decimals: meta.decimals,
-        balanceFormatted: formatBalance(raw.balance, meta.decimals),
+  // --- Native ETH path ---
+  // Prepended AFTER the allowlist filter — native ETH has no `tokens.json`
+  // entry but is always trusted (chain-level concept). Skip if the value is
+  // zero so we don't pollute the row list with empty natives.
+  if (nativeSettled.status === "fulfilled") {
+    const { rawHex, value } = nativeSettled.value;
+    if (value > ZERO) {
+      tokens.unshift({
+        address: NATIVE_ETH_ADDRESS,
+        symbol: "ETH",
+        balance: rawHex,
+        decimals: 18,
+        balanceFormatted: formatBalance(rawHex, 18),
       });
     }
-    return { chain, address, tokens };
-  } catch (err) {
-    // Per-chain error isolation: log and return empty for this chain only.
+  } else {
     console.warn(
-      `[alchemy] ${chain} balance fetch failed: ${(err as Error).message}`,
+      `[alchemy] ${chain} native ETH fetch failed: ${nativeSettled.reason instanceof Error ? nativeSettled.reason.message : String(nativeSettled.reason)}`,
     );
-    return { chain, address, tokens: [] };
   }
+
+  return { chain, address, tokens };
 }
 
 /**
- * Fetch ERC-20 token balances for a single wallet address across the requested
- * chains. Tokens with zero balances or missing metadata are filtered out.
+ * Fetch ERC-20 + native ETH balances for a single wallet address across the
+ * requested chains.
+ *
+ * - Native ETH (when held) is returned as a synthetic row with the canonical
+ *   zero-address (`0x000…000`), `symbol: "ETH"`, `decimals: 18`, and is
+ *   prepended ahead of the ERC-20 entries.
+ * - ERC-20 entries are filtered through the curated `tokens.json` allowlist
+ *   plus a symbol-shape regex (defense against airdrop-spam / prompt-injection
+ *   tokens). Anything outside the allowlist is silently dropped.
+ * - Tokens with zero balances or missing metadata are filtered out.
  *
  * Errors on one chain do not propagate — that chain returns an empty `tokens`
- * array while the others still resolve.
+ * array while the others still resolve. Within a chain, native and ERC-20
+ * fetches are independently isolated, so a failure on one path does not
+ * poison the other.
  */
 export async function getTokenBalances(
   address: string,
