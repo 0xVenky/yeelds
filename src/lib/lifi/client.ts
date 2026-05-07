@@ -34,6 +34,13 @@ export const LifiPortfolioResponseSchema = z.object({
   positions: z.array(LifiPositionSchema),
 });
 
+// Per-call upstream timeout (chat-review-fixes.md B6). 8s matches the
+// alchemy/client.ts cap so a degraded upstream can't drag the chat tool
+// round to Vercel's 60s ceiling. Schema validation in `fetchPortfolio`
+// already returns `[]` on errors, so timeout failures fall into the same
+// "stale-but-correct > fresh-but-wrong" recovery path.
+const LIFI_FETCH_TIMEOUT_MS = 8000;
+
 async function fetchJson(url: string): Promise<unknown> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (process.env.LIFI_API_KEY) {
@@ -42,6 +49,7 @@ async function fetchJson(url: string): Promise<unknown> {
   const res = await fetch(url, {
     headers,
     next: { revalidate: 0 },
+    signal: AbortSignal.timeout(LIFI_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`LI.FI API ${res.status}: ${url}`);

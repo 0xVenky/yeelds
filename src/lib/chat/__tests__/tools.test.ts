@@ -12,17 +12,27 @@ import type { PoolListItem } from "@/lib/types";
 vi.mock("@/lib/pipeline/cache", () => ({
   ensureCachePopulated: vi.fn(async () => {}),
   getCachedPools: vi.fn<() => PoolListItem[]>(() => []),
+  // Default to "ok" — tests that need empty/stale variants override below.
+  getCacheStatus: vi.fn<() => "ok" | "stale" | "empty">(() => "ok"),
 }));
 
 vi.mock("@/lib/lifi/client", () => ({
   fetchPortfolio: vi.fn(async () => []),
 }));
 
+vi.mock("@/lib/alchemy/client", () => ({
+  // Default to no held tokens; tests override per case via mockResolvedValueOnce.
+  getTokenBalances: vi.fn(async () => []),
+}));
+
 import { executeTool } from "@/lib/chat/tools";
-import { getCachedPools } from "@/lib/pipeline/cache";
+import { getCachedPools, getCacheStatus } from "@/lib/pipeline/cache";
+import { getTokenBalances } from "@/lib/alchemy/client";
 import { SYSTEM_PROMPT } from "@/lib/chat/system-prompt";
 
 const mockedGetCachedPools = vi.mocked(getCachedPools);
+const mockedGetCacheStatus = vi.mocked(getCacheStatus);
+const mockedGetTokenBalances = vi.mocked(getTokenBalances);
 
 function makePool(overrides: Partial<PoolListItem> = {}): PoolListItem {
   return {
@@ -88,6 +98,10 @@ function makePool(overrides: Partial<PoolListItem> = {}): PoolListItem {
 beforeEach(() => {
   mockedGetCachedPools.mockReset();
   mockedGetCachedPools.mockReturnValue([]);
+  mockedGetCacheStatus.mockReset();
+  mockedGetCacheStatus.mockReturnValue("ok");
+  mockedGetTokenBalances.mockReset();
+  mockedGetTokenBalances.mockResolvedValue([]);
 });
 
 describe("search_vaults", () => {
@@ -96,21 +110,24 @@ describe("search_vaults", () => {
 
     const result = (await executeTool("search_vaults", {
       chain: "ethereum",
-    })) as { vaults: Record<string, unknown>[] };
+    })) as { vaults: Record<string, unknown>[]; cache_status: string };
 
     expect(Array.isArray(result.vaults)).toBe(true);
     expect(result.vaults.length).toBe(1);
+    // B9: cache_status surfaced on success path.
+    expect(result.cache_status).toBe("ok");
 
     const row = result.vaults[0];
     // Slim row contract — exactly these fields, nothing else.
+    // C19: keys read `apy_*`, not `apr_*`.
     const expectedKeys = [
       "vault_address",
       "chain",
       "protocol_name",
       "asset_symbols",
-      "apr_total",
-      "apr_base",
-      "apr_reward",
+      "apy_total",
+      "apy_base",
+      "apy_reward",
       "tvl_usd",
       "asset_class",
       "contract_age_days",
@@ -129,7 +146,7 @@ describe("search_vaults", () => {
     // Spot check the values came through correctly.
     expect(row.protocol_name).toBe("morpho-v1");
     expect(row.asset_symbols).toEqual(["USDC"]);
-    expect(row.apr_total).toBe(5.5);
+    expect(row.apy_total).toBe(5.5);
     expect(row.depeg_risk).toBe("known-safe");
   });
 
@@ -137,7 +154,20 @@ describe("search_vaults", () => {
     mockedGetCachedPools.mockReturnValue([]);
 
     const result = await executeTool("search_vaults", { chain: "base" });
-    expect(result).toEqual({ vaults: [] });
+    expect(result).toEqual({ vaults: [], cache_status: "ok" });
+  });
+
+  it("propagates cache_status: 'empty' so the model can disambiguate", async () => {
+    // B9: when LI.FI is down and the cache hasn't populated, the model needs
+    // to say "data unavailable" — not "no matches for your filters".
+    mockedGetCachedPools.mockReturnValue([]);
+    mockedGetCacheStatus.mockReturnValue("empty");
+
+    const result = (await executeTool("search_vaults", {
+      chain: "ethereum",
+    })) as { vaults: unknown[]; cache_status: string };
+    expect(result.cache_status).toBe("empty");
+    expect(result.vaults).toEqual([]);
   });
 });
 
@@ -150,7 +180,9 @@ describe("get_vault_details", () => {
       chain: "ethereum",
     });
 
-    expect(result).toEqual({ error: "Vault not found" });
+    // B9: cache_status sits next to the error so the model can distinguish
+    // "vault doesn't exist in the catalog" from "data unavailable".
+    expect(result).toEqual({ error: "Vault not found", cache_status: "ok" });
   });
 
   it("returns the full vault when found", async () => {
@@ -159,11 +191,12 @@ describe("get_vault_details", () => {
     const result = (await executeTool("get_vault_details", {
       vault_address: "0x1111111111111111111111111111111111111111",
       chain: "ethereum",
-    })) as { vault: PoolListItem };
+    })) as { vault: PoolListItem; cache_status: string };
 
     expect(result.vault).toBeDefined();
     expect(result.vault.protocol).toBe("morpho-v1");
     expect(result.vault.yield.apr_total).toBe(5.5);
+    expect(result.cache_status).toBe("ok");
   });
 
   it("rejects an invalid address with an error object", async () => {
@@ -177,17 +210,17 @@ describe("get_vault_details", () => {
 
 describe("find_yields_for_holdings", () => {
   it("returns empty matches when wallet holds nothing", async () => {
-    // Alchemy is not mocked — without ALCHEMY_API_KEY it returns []; with a
-    // key, the test wallet has no held tokens. Either way the matches array
-    // should be empty.
+    // Alchemy mock defaults to []; the cache has one pool but the wallet
+    // holds nothing → no symbols to match → empty matches.
     mockedGetCachedPools.mockReturnValue([makePool()]);
 
     const result = (await executeTool("find_yields_for_holdings", {
       address: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-    })) as { matches: unknown[] };
+    })) as { matches: unknown[]; cache_status: string };
 
     expect(Array.isArray(result.matches)).toBe(true);
     expect(result.matches).toEqual([]);
+    expect(result.cache_status).toBe("ok");
   });
 
   it("rejects an invalid address", async () => {
@@ -195,6 +228,47 @@ describe("find_yields_for_holdings", () => {
       address: "0xnope",
     });
     expect(result).toMatchObject({ error: expect.stringContaining("Invalid") });
+  });
+
+  it("returns top vaults grouped by held symbol when wallet holds matching tokens", async () => {
+    // C17 happy-path: wallet holds USDC on Ethereum, cache has one matching
+    // USDC vault → matches should contain that vault under held_token "USDC".
+    mockedGetCachedPools.mockReturnValue([makePool()]);
+    mockedGetTokenBalances.mockResolvedValue([
+      {
+        chain: "ethereum",
+        address: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        tokens: [
+          {
+            address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            symbol: "USDC",
+            balance: "0x5f5e100",
+            decimals: 6,
+            balanceFormatted: 100,
+          },
+        ],
+      },
+    ]);
+
+    const result = (await executeTool("find_yields_for_holdings", {
+      address: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    })) as {
+      matches: Array<{
+        held_token: string;
+        top_vaults: Array<Record<string, unknown>>;
+      }>;
+      cache_status: string;
+    };
+
+    expect(result.cache_status).toBe("ok");
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].held_token).toBe("USDC");
+    expect(result.matches[0].top_vaults).toHaveLength(1);
+    // C19: slim row uses apy_* keys.
+    expect(result.matches[0].top_vaults[0].apy_total).toBe(5.5);
+    expect(result.matches[0].top_vaults[0].protocol_name).toBe("morpho-v1");
+    // B4: the deprecated `note` field must NOT appear on the response.
+    expect(result).not.toHaveProperty("note");
   });
 });
 
@@ -266,7 +340,10 @@ describe("compare_vaults", () => {
           chain: "ethereum",
         },
       ],
-    })) as { vaults: Array<{ vault_address: string; protocol_name: string }> };
+    })) as {
+      vaults: Array<{ vault_address: string; protocol_name: string }>;
+      cache_status: string;
+    };
 
     expect(result.vaults).toHaveLength(2);
     // Result order MUST match input order, NOT cache order or APR order.
@@ -274,5 +351,7 @@ describe("compare_vaults", () => {
     expect(result.vaults[0].protocol_name).toBe("morpho-v1");
     expect(result.vaults[1].vault_address).toBe(poolA.vault_address);
     expect(result.vaults[1].protocol_name).toBe("aave-v3");
+    // B9: cache_status surfaced on the success path.
+    expect(result.cache_status).toBe("ok");
   });
 });

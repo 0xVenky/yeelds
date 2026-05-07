@@ -1,6 +1,20 @@
 // Yield unit — LI.FI returns APY natively (Decision 21, supersedes Decision 6)
 export const YIELD_UNIT = "APY" as const;
 
+// Chat tool — model-facing asset class enum exposed in `search_vaults.input_schema`.
+// NOTE: these values are an alias the model sees, not the canonical
+// `pool.exposure.asset_class` values (which come from tokens.json: usd_stable,
+// eth_class, btc_class, rwa, eur_stable). Realigning the two is out of scope
+// for the chat-review-fixes pass — see GAPS in the dispatch report.
+export const CHAT_ASSET_CLASSES = [
+  "stablecoin",
+  "eth",
+  "btc",
+  "rwa",
+  "yield-bearing",
+] as const;
+export type ChatAssetClass = (typeof CHAT_ASSET_CLASSES)[number];
+
 // Supported chains
 export const SUPPORTED_CHAINS = ["ethereum", "arbitrum", "base"] as const;
 export type SupportedChain = (typeof SUPPORTED_CHAINS)[number];

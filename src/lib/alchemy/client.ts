@@ -33,6 +33,13 @@
 // model's context. A symbol-shape regex backstops the allowlist in case the
 // seed is ever poisoned. Native ETH is exempt — it's a chain-level concept
 // with no `tokens.json` entry, so it's prepended AFTER the filter.
+//
+// Pagination limitation (chat-review-fixes.md B12):
+// `alchemy_getTokenBalances` returns up to 100 ERC-20s per call. We log a
+// warning when the response is exactly 100 (likely truncated) but do not
+// paginate — the allowlist filter mitigates noise, and seasoned wallets with
+// >100 legitimate tokens past the truncation boundary are an edge case we
+// defer until we see real demand.
 
 import { lookupToken } from "@/lib/pipeline/tokens";
 
@@ -100,6 +107,14 @@ type RpcResponse<T> = {
   error?: { code: number; message: string };
 };
 
+// Per-call upstream timeout (chat-review-fixes.md B6). 8s is generous on
+// Alchemy's free-tier ERC-20 paths and bounded enough that a single slow
+// host doesn't drag the whole tool round to Vercel's 60s ceiling. The
+// existing per-path `Promise.allSettled` (ERC-20 vs native, and the
+// per-chain isolation in `getTokenBalances`) handles the resulting abort
+// without poisoning sibling calls.
+const ALCHEMY_FETCH_TIMEOUT_MS = 8000;
+
 async function rpcCall<T>(
   url: string,
   method: string,
@@ -109,6 +124,7 @@ async function rpcCall<T>(
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    signal: AbortSignal.timeout(ALCHEMY_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`Alchemy ${method} HTTP ${res.status}`);
@@ -147,6 +163,7 @@ function formatBalance(rawHex: string, decimals: number): number {
 
 async function fetchChainTokenBalances(
   url: string,
+  chain: AlchemyChain,
   address: string,
 ): Promise<{ contractAddress: string; balance: string }[]> {
   // alchemy_getTokenBalances returns up to 100 ERC-20 balances by default.
@@ -156,7 +173,17 @@ async function fetchChainTokenBalances(
     "alchemy_getTokenBalances",
     [address, "erc20"],
   );
-  return (result.tokenBalances ?? [])
+  const rawList = result.tokenBalances ?? [];
+  // B12: surface likely truncation. Exactly 100 is the documented page size,
+  // so an exact-100 response very probably has more behind it. The allowlist
+  // filter mitigates the noise but legitimate-token loss past position 100
+  // is possible — log so we can spot it in production traces if it matters.
+  if (rawList.length === 100) {
+    console.warn(
+      `[alchemy] ${chain} returned exactly 100 tokens — likely truncated; allowlist filter mitigates but pagination not implemented`,
+    );
+  }
+  return rawList
     .filter(
       (tb) =>
         !tb.error &&
@@ -203,6 +230,32 @@ async function fetchTokenMetadata(
   }
 }
 
+// Hand-rolled semaphore (chat-review-fixes.md B13). With the A3 allowlist
+// filter the realistic post-allowlist token list is bounded to ~94, but a
+// single seasoned wallet still fans out enough metadata calls to hit
+// Alchemy's free-tier RPS cap (~25-30 RPS). Cap at 10 concurrent calls per
+// chain — sequential enough to stay under the cap, parallel enough that the
+// total wall time stays bounded by ceil(N/10) × ~150ms.
+function createSemaphore(limit: number) {
+  let active = 0;
+  const queue: Array<() => void> = [];
+  return async function acquire<T>(fn: () => Promise<T>): Promise<T> {
+    if (active >= limit) {
+      await new Promise<void>((resolve) => queue.push(resolve));
+    }
+    active++;
+    try {
+      return await fn();
+    } finally {
+      active--;
+      const next = queue.shift();
+      if (next) next();
+    }
+  };
+}
+
+const METADATA_CONCURRENCY = 10;
+
 async function getChainBalances(
   chain: AlchemyChain,
   address: string,
@@ -217,7 +270,7 @@ async function getChainBalances(
   // ensures a failure on one path does not poison the other — e.g., if the
   // ERC-20 call fails we still surface native ETH (and vice-versa).
   const [erc20Settled, nativeSettled] = await Promise.allSettled([
-    fetchChainTokenBalances(url, address),
+    fetchChainTokenBalances(url, chain, address),
     fetchNativeBalance(url, address),
   ]);
 
@@ -228,11 +281,16 @@ async function getChainBalances(
     const rawBalances = erc20Settled.value;
     if (rawBalances.length > 0) {
       try {
-        // Resolve metadata in parallel — Alchemy rate-limits at 25-30 RPS on free
-        // tier and these are independent calls. The list is already filtered to
-        // non-zero balances, so cost is bounded by what the wallet actually holds.
+        // Resolve metadata in parallel, but capped at METADATA_CONCURRENCY per
+        // chain (B13). Alchemy's free tier rate-limits at 25-30 RPS, and a
+        // seasoned wallet × 3 chains can otherwise fan out enough simultaneous
+        // calls to trip it. The list is already filtered to non-zero balances
+        // and the allowlist is the deeper filter, so cost stays bounded.
+        const acquire = createSemaphore(METADATA_CONCURRENCY);
         const metadataResults = await Promise.allSettled(
-          rawBalances.map((b) => fetchTokenMetadata(url, b.contractAddress)),
+          rawBalances.map((b) =>
+            acquire(() => fetchTokenMetadata(url, b.contractAddress)),
+          ),
         );
 
         for (let i = 0; i < rawBalances.length; i++) {

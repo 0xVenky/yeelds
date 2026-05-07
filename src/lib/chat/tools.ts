@@ -15,34 +15,33 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   ensureCachePopulated,
   getCachedPools,
+  getCacheStatus,
+  type CacheStatus,
 } from "@/lib/pipeline/cache";
 import type { PoolListItem } from "@/lib/types";
-import { CHAIN_IDS, type SupportedChain } from "@/lib/constants";
+import { CHAT_ASSET_CLASSES, type SupportedChain } from "@/lib/constants";
 import { getTokenBalances, type AlchemyChain } from "@/lib/alchemy/client";
 import { fetchPortfolio, type LifiPosition } from "@/lib/lifi/client";
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const SUPPORTED_CHAINS = ["ethereum", "arbitrum", "base"] as const;
-const ASSET_CLASSES = [
-  "stablecoin",
-  "eth",
-  "btc",
-  "rwa",
-  "yield-bearing",
-] as const;
 const DEPEG_RISKS = ["known-safe", "caution", "high-risk"] as const;
 
 // Slim row shape for search_vaults / compare_vaults / find_yields_for_holdings.
 // This is the contract Mario reports in the completion handoff — keep these
 // fields stable so the model's prompt-budgeting stays predictable.
+//
+// Naming note: keys read `apy_*` per Decision 21 (LI.FI returns APY natively).
+// The right-hand-side `pool.yield.apr_*` reads remain unchanged — that's the
+// underlying data model, separately Decision-pending to rename.
 export type SearchVaultRow = {
   vault_address: string;
   chain: string;
   protocol_name: string;
   asset_symbols: string[];
-  apr_total: number;
-  apr_base: number | null;
-  apr_reward: number | null;
+  apy_total: number;
+  apy_base: number | null;
+  apy_reward: number | null;
   tvl_usd: number;
   asset_class: string | null;
   contract_age_days: number | null;
@@ -67,7 +66,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
         },
         asset_class: {
           type: "string",
-          enum: [...ASSET_CLASSES],
+          enum: [...CHAT_ASSET_CLASSES],
         },
         chain: {
           type: "string",
@@ -169,12 +168,6 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
           type: "string",
           pattern: "^0x[a-fA-F0-9]{40}$",
         },
-        min_balance_usd: {
-          type: "number",
-          default: 50,
-          description:
-            "Skip dust; only suggest yields for holdings worth at least this much in USD",
-        },
       },
       required: ["address"],
     },
@@ -204,25 +197,14 @@ function toSlimRow(pool: PoolListItem): SearchVaultRow {
     chain: pool.chain,
     protocol_name: pool.protocol,
     asset_symbols: pool.exposure.underlying_tokens.map((t) => t.symbol),
-    apr_total: pool.yield.apr_total,
-    apr_base: pool.yield.apr_base,
-    apr_reward: pool.yield.apr_reward,
+    apy_total: pool.yield.apr_total,
+    apy_base: pool.yield.apr_base,
+    apy_reward: pool.yield.apr_reward,
     tvl_usd: pool.tvl_usd,
     asset_class: pool.exposure.asset_class,
     contract_age_days: pool.risk.contract_age_days,
     depeg_risk: pool.risk.underlying_depeg_risk,
   };
-}
-
-// Strip internal-only / large fields from get_vault_details output. The
-// PoolListItem doesn't currently carry a `raw_data` field, but if one is
-// added later this is the chokepoint to filter it out.
-type VaultDetailOutput = Omit<PoolListItem, never>;
-
-function toDetailOutput(pool: PoolListItem): VaultDetailOutput {
-  // PoolListItem already excludes the heaviest fields (no raw_data, no full
-  // morpho/upshift dumps). Returning as-is is safe.
-  return pool;
 }
 
 function findPoolByAddress(
@@ -268,8 +250,9 @@ const DEPEG_RANK: Record<string, number> = {
 
 async function execSearchVaults(
   input: SearchVaultsInput,
-): Promise<{ vaults: SearchVaultRow[] }> {
+): Promise<{ vaults: SearchVaultRow[]; cache_status: CacheStatus }> {
   await ensureCachePopulated();
+  const cache_status = getCacheStatus();
   let pools = getCachedPools();
 
   if (input.chain) {
@@ -310,7 +293,7 @@ async function execSearchVaults(
 
   const limit = Math.max(1, Math.min(20, input.limit ?? 10));
   const top = pools.slice(0, limit);
-  return { vaults: top.map(toSlimRow) };
+  return { vaults: top.map(toSlimRow), cache_status };
 }
 
 type GetVaultDetailsInput = {
@@ -326,11 +309,14 @@ async function execGetVaultDetails(input: GetVaultDetailsInput) {
     return { error: "Invalid chain — must be ethereum, arbitrum, or base" };
   }
   await ensureCachePopulated();
+  const cache_status = getCacheStatus();
   const pool = findPoolByAddress(input.vault_address, input.chain);
   if (!pool) {
-    return { error: "Vault not found" };
+    return { error: "Vault not found", cache_status };
   }
-  return { vault: toDetailOutput(pool) };
+  // PoolListItem already excludes the heaviest fields (no raw_data, no full
+  // morpho/upshift dumps). Returning as-is is safe.
+  return { vault: pool, cache_status };
 }
 
 type CompareVaultsInput = {
@@ -343,6 +329,7 @@ async function execCompareVaults(input: CompareVaultsInput) {
     return { error: "Provide 2 to 4 vaults to compare" };
   }
   await ensureCachePopulated();
+  const cache_status = getCacheStatus();
 
   const rows: Array<SearchVaultRow | { error: string; vault_address: string }> = [];
   for (const v of list) {
@@ -369,7 +356,7 @@ async function execCompareVaults(input: CompareVaultsInput) {
     }
     rows.push(toSlimRow(pool));
   }
-  return { vaults: rows };
+  return { vaults: rows, cache_status };
 }
 
 type GetWalletHoldingsInput = {
@@ -396,32 +383,20 @@ async function execGetWalletHoldings(input: GetWalletHoldingsInput) {
 
 type FindYieldsInput = {
   address?: unknown;
-  min_balance_usd?: unknown;
 };
 
 async function execFindYieldsForHoldings(input: FindYieldsInput) {
   if (!isAddressValid(input.address)) {
     return { error: "Invalid address — must be 0x-prefixed 40-char hex" };
   }
-  const minUsdRaw = typeof input.min_balance_usd === "number"
-    ? input.min_balance_usd
-    : 50;
-  const minUsd = Number.isFinite(minUsdRaw) && minUsdRaw >= 0 ? minUsdRaw : 50;
 
   await ensureCachePopulated();
+  const cache_status = getCacheStatus();
   const balances = await getTokenBalances(input.address, [
     "ethereum",
     "arbitrum",
     "base",
   ]);
-
-  // Alchemy's getTokenBalances doesn't return USD prices in the call we made
-  // — explicitly note this in the response so the model can communicate the
-  // limitation. Filter by has-balance instead of USD threshold.
-  const usdPricesAvailable = false;
-  const note = usdPricesAvailable
-    ? null
-    : `USD price data not returned by Alchemy on this code path; min_balance_usd=${minUsd} not enforced. Returning matches for any non-zero held token. Communicate this limitation when summarizing.`;
 
   // Build a unique set of held symbols across all chains.
   const heldSymbols = new Set<string>();
@@ -432,7 +407,7 @@ async function execFindYieldsForHoldings(input: FindYieldsInput) {
   }
 
   if (heldSymbols.size === 0) {
-    return { matches: [], note };
+    return { matches: [], cache_status };
   }
 
   const pools = getCachedPools();
@@ -458,7 +433,7 @@ async function execFindYieldsForHoldings(input: FindYieldsInput) {
     }
   }
 
-  return { matches, note };
+  return { matches, cache_status };
 }
 
 type GetWalletDefiPositionsInput = { address?: unknown };
@@ -515,5 +490,3 @@ export async function executeTool(
   }
 }
 
-// Used by chains routing. Re-exported for tests + route handler.
-export { CHAIN_IDS };

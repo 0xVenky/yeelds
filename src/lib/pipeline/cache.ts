@@ -13,6 +13,19 @@ let cachedBenchmarks: Record<string, AssetClassBenchmark> = {};
 let lastRefreshed: Date | null = null;
 let isRefreshing = false;
 
+// Chat-tool cache freshness signal (chat-review-fixes.md B9). Models can
+// distinguish "no matches for these filters" from "data temporarily
+// unavailable" only if the tool result tells them which is which.
+export type CacheStatus = "ok" | "stale" | "empty";
+
+// 15 minutes — the cache pipeline normally refreshes faster than this in
+// active use; anything older suggests upstream is degraded. Picked over a
+// shorter window (5min) so a single slow LI.FI fetch doesn't trip the flag,
+// and over a longer one (1h) because half-hour-old yields are stale enough
+// to mislead a chat user. Keep this in sync with the pipeline refresh
+// cadence if that ever lengthens.
+const CACHE_STALENESS_MS = 15 * 60 * 1000;
+
 export function getCachedPools(): PoolListItem[] {
   return cachedPools;
 }
@@ -23,6 +36,14 @@ export function getCachedBenchmarks(): Record<string, AssetClassBenchmark> {
 
 export function getLastRefreshed(): Date | null {
   return lastRefreshed;
+}
+
+export function getCacheStatus(): CacheStatus {
+  if (cachedPools.length === 0) return "empty";
+  if (lastRefreshed === null) return "stale";
+  const ageMs = Date.now() - lastRefreshed.getTime();
+  if (ageMs > CACHE_STALENESS_MS) return "stale";
+  return "ok";
 }
 
 export async function refreshCache(): Promise<{ count: number; errors: string[] }> {

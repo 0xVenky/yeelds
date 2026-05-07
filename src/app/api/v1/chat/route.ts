@@ -39,12 +39,17 @@ const MAX_TOOL_ROUNDS = 5;
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 4096;
 
+// Per-message content cap (chat-review-fixes.md B7). 8000 chars ≈ 2000 tokens
+// worst case — generous for chat input while bounding the input-token budget
+// so a single oversized message can't blow the model's context window.
+const MAX_MESSAGE_CONTENT_CHARS = 8000;
+
 const ChatPostBodySchema = z.object({
   messages: z
     .array(
       z.object({
         role: z.enum(["user", "assistant"]),
-        content: z.string(),
+        content: z.string().min(1).max(MAX_MESSAGE_CONTENT_CHARS),
       }),
     )
     .min(1),
@@ -68,26 +73,25 @@ function buildCachedTools(): Anthropic.Tool[] {
 }
 
 function buildSystemBlocks(
-  connectedAddress: string | undefined,
+  connectedAddress: string,
 ): Anthropic.TextBlockParam[] {
-  const blocks: Anthropic.TextBlockParam[] = [
+  // After the c7b0001 Zod tightening + ADDRESS_RE check, `connectedAddress`
+  // is always a non-empty 0x-prefixed string by the time we get here.
+  return [
     {
       type: "text",
       text: SYSTEM_PROMPT,
       cache_control: { type: "ephemeral" },
     },
-  ];
-  if (connectedAddress) {
     // Second block, UNCACHED — see file-header comment for why.
-    blocks.push({
+    {
       type: "text",
       text:
         `The user's connected wallet address is ${connectedAddress}. ` +
         `Use it as the default address for any wallet-aware tool unless ` +
         `the user explicitly provides a different one.`,
-    });
-  }
-  return blocks;
+    },
+  ];
 }
 
 export async function POST(req: Request) {
@@ -235,13 +239,31 @@ async function runToolLoop(
     // tool_results.
     apiMessages.push({ role: "assistant", content: final.content });
 
+    // Per-tool error isolation (chat-review-fixes.md B5). `executeTool` already
+    // wraps its switch in try/catch, but the surrounding round-trip used
+    // `Promise.all` which rejects the whole batch on a single thrown rejection.
+    // The catch here makes that path identical to the inner-catch path: a
+    // shaped `{error}` flows back to the model with `is_error: true`, so the
+    // model can recover within the same turn instead of seeing the route
+    // handler's generic fallback.
     const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
       toolUseBlocks.map(async (b) => {
-        const result = await executeTool(b.name, b.input);
+        let result: unknown;
+        try {
+          result = await executeTool(b.name, b.input);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          result = { error: `Tool ${b.name} failed: ${message}` };
+        }
+        const isError =
+          result !== null &&
+          typeof result === "object" &&
+          "error" in (result as Record<string, unknown>);
         return {
           type: "tool_result" as const,
           tool_use_id: b.id,
           content: JSON.stringify(result),
+          is_error: isError,
         };
       }),
     );

@@ -83,4 +83,9 @@ redirect, move on.
 - For any factual question about a vault, a yield, or a wallet's positions:
   call a tool. Do not answer from memory.
 - Up to 5 tool rounds per user turn (enforced by the route handler).
-- If a tool returns an empty result, say so — do not fabricate a fallback.`;
+- If a tool returns an empty result, say so — do not fabricate a fallback.
+- If a tool returns \`cache_status: "empty"\` or \`"stale"\`, tell the user
+  vault data is currently unavailable rather than claiming there are no
+  matches. Distinguish between "no results for your filters" (when
+  \`cache_status: "ok"\` and the array is empty) and "data temporarily
+  unavailable" (when \`cache_status\` is anything else).`;

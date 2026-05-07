@@ -19,6 +19,15 @@ const SUGGESTED_PROMPTS = [
 
 const MESSAGE_CAP_ERROR = "Message cap reached. Start a new conversation.";
 
+// Per-chunk inactivity timeout for the streaming response. Measures the gap
+// between successive chunks, not from request start — first-chunk latency on
+// a slow tool round can exceed total request budgets, but once data starts
+// flowing each chunk should arrive promptly. 30s gives slow tool rounds room
+// without leaving ThinkingIndicator stuck forever on a server stall.
+const STREAM_CHUNK_TIMEOUT_MS = 30_000;
+const STREAM_TIMEOUT_MESSAGE =
+  "The response took too long. Please try again.";
+
 export function ChatInterface() {
   const [messages, setMessages] = useState<ChatMessageT[]>([]);
   const [input, setInput] = useState("");
@@ -104,22 +113,68 @@ export function ChatInterface() {
 
       const decoder = new TextDecoder();
       let assistantContent = "";
+      let timedOut = false;
 
       // Add empty assistant message that we'll update as chunks arrive.
       setMessages([...newMessages, { role: "assistant", content: "" }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        assistantContent += decoder.decode(value, { stream: true });
+      try {
+        while (true) {
+          // New timer per iteration — measures gap between chunks. If a
+          // chunk arrives in time we clearTimeout in the finally below; if
+          // it doesn't, the race resolves with __timeout and we bail out.
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<{ __timeout: true }>((resolve) => {
+            timeoutId = setTimeout(
+              () => resolve({ __timeout: true }),
+              STREAM_CHUNK_TIMEOUT_MS
+            );
+          });
+
+          let result: ReadableStreamReadResult<Uint8Array> | { __timeout: true };
+          try {
+            result = await Promise.race([reader.read(), timeoutPromise]);
+          } finally {
+            if (timeoutId !== undefined) clearTimeout(timeoutId);
+          }
+
+          if ("__timeout" in result) {
+            timedOut = true;
+            break;
+          }
+
+          if (result.done) break;
+          assistantContent += decoder.decode(result.value, { stream: true });
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              role: "assistant",
+              content: assistantContent,
+            };
+            return updated;
+          });
+        }
+      } finally {
+        // Idempotent — cancel() is a no-op if the reader already drained.
+        // Wrapped because the spec rejects cancel() on a released reader and
+        // we don't want a stray rejection during the success path.
+        try {
+          await reader.cancel();
+        } catch {
+          // ignore — abort is best-effort once the loop has exited.
+        }
+      }
+
+      if (timedOut) {
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
             role: "assistant",
-            content: assistantContent,
+            content: STREAM_TIMEOUT_MESSAGE,
           };
           return updated;
         });
+        return;
       }
 
       // Final fallback if the stream produced nothing.
