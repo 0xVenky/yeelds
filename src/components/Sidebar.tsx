@@ -13,6 +13,7 @@ type NavItem = {
 };
 
 const DISCOVER_ITEMS: NavItem[] = [
+  { label: "Chat", icon: "forum", href: "/chat" },
   { label: "All Yields", icon: "explore", param: {} },
   { label: "Projects", icon: "grid_view", href: "/projects" },
 ];

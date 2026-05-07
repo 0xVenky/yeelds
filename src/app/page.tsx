@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { StrategyCard } from "@/components/StrategyCard";
 import { ensureCachePopulated, getCachedPools } from "@/lib/pipeline/cache";

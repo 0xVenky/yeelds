@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
+import { TopBar } from "@/components/TopBar";
+import { Providers } from "./providers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,6 +34,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${manrope.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         <link
@@ -49,10 +52,13 @@ export default function RootLayout({
           }}
         />
         <DisclaimerBanner />
-        <div className="relative flex flex-1 min-h-0">
-          <Suspense><Sidebar /></Suspense>
-          <main className="flex-1 overflow-auto">{children}</main>
-        </div>
+        <Providers>
+          <TopBar />
+          <div className="relative flex flex-1 min-h-0">
+            <Suspense><Sidebar /></Suspense>
+            <main className="flex-1 overflow-auto">{children}</main>
+          </div>
+        </Providers>
       </body>
     </html>
   );

@@ -2,10 +2,10 @@
  * Block explorer enrichment — contract age and source verification.
  * Uses Blockscout public API (no API keys required).
  *
- * Limitation: DeFi Llama does not provide pool contract addresses.
- * We use the first underlying token address as a proxy. This gives us
- * the token contract's age/verification, NOT the pool contract's.
- * Good enough for a signal — well-known tokens on old contracts are lower risk.
+ * Scores the actual vault contract via the LI.FI-provided `vault_address`
+ * (PoolListItem.vault_address). This reflects the deployed strategy/vault
+ * rather than its underlying token, so a 30-day-old vault built on USDC
+ * scores as 30 days, not ~5 years.
  */
 
 import type { PoolListItem } from "@/lib/types";
@@ -146,9 +146,9 @@ export async function enrichPoolsWithRisk(pools: PoolListItem[]): Promise<void> 
   let errors = 0;
 
   for (const pool of pools) {
-    // Use first underlying token address as proxy (limitation logged above in module doc)
-    const firstToken = pool.exposure.underlying_tokens[0];
-    if (!firstToken?.address || firstToken.address === "0x0000000000000000000000000000000000000000") {
+    // Score the vault contract itself (LI.FI-provided), not an underlying token proxy.
+    const vaultAddress = pool.vault_address;
+    if (!vaultAddress || vaultAddress === "0x0000000000000000000000000000000000000000") {
       skipped++;
       continue;
     }
@@ -160,7 +160,7 @@ export async function enrichPoolsWithRisk(pools: PoolListItem[]): Promise<void> 
     }
 
     try {
-      const riskData = await fetchRiskForAddress(firstToken.address, chain);
+      const riskData = await fetchRiskForAddress(vaultAddress, chain);
       pool.risk.contract_age_days = riskData.contract_age_days;
       pool.risk.is_verified = riskData.is_verified;
       enriched++;
@@ -171,6 +171,6 @@ export async function enrichPoolsWithRisk(pools: PoolListItem[]): Promise<void> 
   }
 
   console.log(
-    `[risk] Enrichment complete: ${enriched} enriched, ${skipped} skipped (no address), ${errors} errors`
+    `[risk] Enrichment complete: ${enriched} enriched, ${skipped} skipped (no vault address), ${errors} errors`
   );
 }

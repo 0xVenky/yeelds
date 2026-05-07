@@ -1,6 +1,32 @@
 // Yield unit — LI.FI returns APY natively (Decision 21, supersedes Decision 6)
 export const YIELD_UNIT = "APY" as const;
 
+// Chat tool — model-facing asset class enum exposed in `search_vaults.input_schema`.
+// These values are an alias the model sees; the canonical `pool.exposure.asset_class`
+// values produced by `lifi-normalize.ts` are `usd_stable` / `eur_stable` /
+// `eth_class` / `btc_class` / `rwa`. The `CHAT_ASSET_CLASS_TO_CANONICAL` map
+// below is the translation layer used inside `execSearchVaults` so a model
+// query for `asset_class: "eth"` actually matches `eth_class`-flagged pools.
+// `"yield-bearing"` is the one chat value that maps to a different field
+// (`exposure.has_yield_bearing_token`), not `asset_class` — handled as a
+// special case in the filter, not in this map.
+export const CHAT_ASSET_CLASSES = [
+  "stablecoin",
+  "eth",
+  "btc",
+  "rwa",
+  "yield-bearing",
+] as const;
+export type ChatAssetClass = (typeof CHAT_ASSET_CLASSES)[number];
+
+export const CHAT_ASSET_CLASS_TO_CANONICAL: Record<string, readonly string[]> = {
+  stablecoin: ["usd_stable", "eur_stable"],
+  eth: ["eth_class"],
+  btc: ["btc_class"],
+  rwa: ["rwa"],
+  // "yield-bearing" intentionally absent — see comment block above.
+};
+
 // Supported chains
 export const SUPPORTED_CHAINS = ["ethereum", "arbitrum", "base"] as const;
 export type SupportedChain = (typeof SUPPORTED_CHAINS)[number];
@@ -37,6 +63,18 @@ export const MAX_REASONABLE_APY = 10000;
 
 // LI.FI Earn API (Decision 20 — primary data source)
 export const LIFI_EARN_BASE_URL = "https://earn.li.fi";
+
+// Depeg classification sets — keyed by symbol, sourced from docs/product-context.md.
+// "Known safe" / "caution" enumerations; "high-risk" is a market-cap-driven heuristic
+// we cannot derive in-pipe (no mcap data) — pools with no caution-or-worse stable but
+// at least one known-safe stable resolve to "known-safe"; if any underlying is in the
+// caution set, the pool resolves to "caution".
+export const KNOWN_SAFE_STABLES: ReadonlySet<string> = new Set([
+  "USDC", "USDT", "DAI", "FRAX",
+]);
+export const CAUTION_STABLES: ReadonlySet<string> = new Set([
+  "USDbC", "USDX", "RLUSD", "GHO",
+]);
 
 // Yield source types — where the yield comes from
 export const YIELD_SOURCE_TYPES = [

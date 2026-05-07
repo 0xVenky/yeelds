@@ -1,7 +1,9 @@
 import type { LifiVaultRaw } from "@/lib/pipeline/fetchers/lifi-schemas";
 import type { PoolListItem, TokenInfo } from "@/lib/types";
 import {
+  CAUTION_STABLES,
   CHAIN_BY_ID,
+  KNOWN_SAFE_STABLES,
   LIFI_PROTOCOL_YIELD_SOURCE,
   RWA_PROTOCOLS,
   type SupportedChain,
@@ -73,6 +75,23 @@ function deriveAssetClass(tokens: TokenInfo[], poolType: string): string | null 
 
 function hasYieldBearingToken(tokens: TokenInfo[]): boolean {
   return tokens.some(t => t.is_yield_bearing);
+}
+
+/**
+ * Derive depeg risk for a pool from its underlying tokens.
+ * - null  : non-stable pool (no is_stable underlying), or stable underlyings we don't recognize
+ * - "caution"    : at least one underlying is in CAUTION_STABLES (caution wins over known-safe)
+ * - "known-safe" : all stable underlyings are in KNOWN_SAFE_STABLES
+ *
+ * High-risk classification (mcap < $50M / age < 6mo per product-context.md) is
+ * a runtime heuristic that requires data we don't have in-pipe — not handled here.
+ */
+export function deriveDepegRisk(tokens: TokenInfo[]): string | null {
+  const stables = tokens.filter(t => t.is_stable);
+  if (stables.length === 0) return null;
+  if (stables.some(t => CAUTION_STABLES.has(t.symbol))) return "caution";
+  if (stables.every(t => KNOWN_SAFE_STABLES.has(t.symbol))) return "known-safe";
+  return null;
 }
 
 /**
@@ -152,7 +171,7 @@ export function normalizeLifiVault(raw: LifiVaultRaw): PoolListItem | null {
       is_audited: null,
       is_verified: null,
       top_lp_concentration: null,
-      underlying_depeg_risk: null,
+      underlying_depeg_risk: deriveDepegRisk(underlyingTokens),
     },
     incentives_summary: {
       count: apyReward !== null && apyReward > 0 ? 1 : 0,
